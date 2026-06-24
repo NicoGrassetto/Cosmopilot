@@ -42,3 +42,5 @@ Repo should be empty (no opeorational data)
 Nano or mini model
 
 diskANN for faster ops
+
+Add evals set
