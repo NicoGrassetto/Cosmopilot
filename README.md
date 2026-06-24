@@ -31,3 +31,8 @@ frontend connects direclty to backend( TS)
 
 indexing is handled by a function in the change feed. python or js or whatever
 
+https://github.com/copilotkit/copilotkit
+
+Add voice to it 
+
+(Speech to text and text to speech)
