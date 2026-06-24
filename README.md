@@ -38,3 +38,7 @@ Add voice to it
 (Speech to text and text to speech)
 In the agent add a way to vibe code operational data for cosmos db (via a script to bootstrap it) similarly should change the script that creates realtime operational data.
 Repo should be empty (no opeorational data)
+
+Nano or mini model
+
+diskANN for faster ops
