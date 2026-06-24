@@ -23,3 +23,11 @@ Use-case operational data
 /docs
 
 /.github
+
+
+No backend except for indexing 
+
+frontend connects direclty to backend( TS)
+
+indexing is handled by a function in the change feed. python or js or whatever
+
