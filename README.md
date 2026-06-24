@@ -45,4 +45,4 @@ diskANN for faster ops
 
 Add evals set
 
-Complete demo of "Operate"
+Complete demo of "Operate" + "Discover"
