@@ -44,3 +44,5 @@ Nano or mini model
 diskANN for faster ops
 
 Add evals set
+
+Complete demo of "Operate"
