@@ -11,3 +11,15 @@
 Use Helix + Zellij + opencode and a lightweight and fast model
 
 /infra (Cosmos DB + make sure the IP bs is disabled, etc etc)
+
+front-end in /frontend
+
+Use-case operational data
+
+/src
+
+/tests
+
+/docs
+
+/.github
