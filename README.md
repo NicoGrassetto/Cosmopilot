@@ -1,5 +1,9 @@
 <h1 align="center">🤖 Cosmopilot</h1>
 
+<p align="center">
+  <img src="assets/banner.png" alt="Cosmopilot Banner" width="100%" />
+</p>
+
 <p align="center">AI-powered chatbot with real-time operational data and voice capabilities.</p>
 
 <p align="center">
@@ -73,6 +77,8 @@ Cosmopilot is a conversational AI application that combines Azure Cosmos DB for 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
+
+![Cosmopilot Overlay](assets/overlay.png)
 
 <!-- COMMENTED OUT - Original notes:
 # Cosmopilot
