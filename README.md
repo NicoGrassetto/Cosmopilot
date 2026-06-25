@@ -11,7 +11,7 @@
   <a href="https://github.com/NicoGrassetto/Cosmopilot"><img alt="GitHub stars" src="https://img.shields.io/github/stars/NicoGrassetto/Cosmopilot" /></a>
 </p>
 
-Cosmopilot is a conversational AI application that combines Azure Cosmos DB for real-time operational data storage with Microsoft Foundry for fast inference and embeddings. It features a lightweight frontend built with Svelte, real-time message synchronization via Cosmos DB change feeds, and integrated voice capabilities.
+Cosmopilot is a demo showcasing Microsoft Foundry as an AI platform, combined with a unified database using Cosmos DB to store both vectors and operational data. It's optimized for speed and real-time data feed/refresh, featuring a lightweight frontend built with Svelte and real-time message synchronization via Cosmos DB change feeds.
 
 ## License
 
