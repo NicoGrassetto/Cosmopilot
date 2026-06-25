@@ -1,7 +1,7 @@
 <h1 align="center">🤖 Cosmopilot</h1>
 
 <p align="center">
-  <img src="assets/banner.png" alt="Cosmopilot Banner" width="100%" />
+  <img src="assets/banner.png" alt="Cosmopilot Banner" width="60%" />
 </p>
 
 <p align="center">AI-powered chatbot with real-time operational data and voice capabilities.</p>
@@ -78,7 +78,9 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ---
 
-![Cosmopilot Overlay](assets/overlay.png)
+<p align="center">
+  <img src="assets/overlay.png" alt="Cosmopilot Overlay" width="50%" />
+</p>
 
 <!-- COMMENTED OUT - Original notes:
 # Cosmopilot
