@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "demo"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "cosmosAccountName": {
+      "value": "cosmopilot-db"
+    },
+    "sqlDatabaseName": {
+      "value": "cosmopilot"
+    },
+    "containerName": {
+      "value": "conversations"
+    },
+    "partitionKeyPath": {
+      "value": "/tenantId"
+    },
+    "throughput": {
+      "value": 400
+    },
+    "consistencyLevel": {
+      "value": "Session"
+    },
+    "projectName": {
+      "value": "cosmopilot"
+    },
+    "publicNetworkAccess": {
+      "value": "Enabled"
+    },
+    "enableDataIsolation": {
+      "value": false
+    }
+  }
+}

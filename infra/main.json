@@ -1,0 +1,240 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.5.1644"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "metadata": {
+        "description": "A short name for the environment, such as dev, test, or prod. This helps you keep deployments organized."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "allowedValues": [
+        "eastus",
+        "eastus2",
+        "westeurope",
+        "uksouth",
+        "swedencentral"
+      ],
+      "metadata": {
+        "description": "The Azure region where resources will be deployed."
+      }
+    },
+    "cosmosAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "The Cosmos DB account name. It must be globally unique across Azure and use only lowercase letters, numbers, and hyphens."
+      }
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "metadata": {
+        "description": "The SQL database name inside the Cosmos DB account. This is like a logical database for your app data."
+      }
+    },
+    "containerName": {
+      "type": "string",
+      "metadata": {
+        "description": "The container name inside the SQL database. This is where your items will be stored."
+      }
+    },
+    "partitionKeyPath": {
+      "type": "string",
+      "defaultValue": "/tenantId",
+      "metadata": {
+        "description": "The partition key path for the container. This is the field Cosmos DB uses to spread data across partitions. Example: /tenantId"
+      }
+    },
+    "throughput": {
+      "type": "int",
+      "defaultValue": 400,
+      "metadata": {
+        "description": "The throughput for the container in request units per second (RU/s). A small value like 400 is fine for development."
+      }
+    },
+    "consistencyLevel": {
+      "type": "string",
+      "defaultValue": "Session",
+      "allowedValues": [
+        "BoundedStaleness",
+        "ConsistentPrefix",
+        "Session",
+        "Strong",
+        "Eventual"
+      ],
+      "metadata": {
+        "description": "The consistency level for the account. Session is a good default for most apps."
+      }
+    },
+    "projectName": {
+      "type": "string",
+      "metadata": {
+        "description": "Foundry Project name - must be globally unique"
+      }
+    },
+    "publicNetworkAccess": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "metadata": {
+        "description": "Project public network access"
+      }
+    },
+    "enableDataIsolation": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable data isolation for the project"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2024-05-15",
+      "name": "[parameters('cosmosAccountName')]",
+      "location": "[parameters('location')]",
+      "kind": "GlobalDocumentDB",
+      "tags": {
+        "environment": "[parameters('environmentName')]"
+      },
+      "properties": {
+        "databaseAccountOfferType": "Standard",
+        "enableFreeTier": false,
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "[parameters('consistencyLevel')]"
+        },
+        "locations": [
+          {
+            "locationName": "[parameters('location')]",
+            "failoverPriority": 0,
+            "isZoneRedundant": false
+          }
+        ],
+        "publicNetworkAccess": "enabled",
+        "enableAutomaticFailover": false
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+      "apiVersion": "2024-05-15",
+      "name": "[format('{0}/{1}', parameters('cosmosAccountName'), parameters('sqlDatabaseName'))]",
+      "properties": {
+        "resource": {
+          "id": "[parameters('sqlDatabaseName')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+      "apiVersion": "2024-05-15",
+      "name": "[format('{0}/{1}/{2}', parameters('cosmosAccountName'), parameters('sqlDatabaseName'), parameters('containerName'))]",
+      "properties": {
+        "resource": {
+          "id": "[parameters('containerName')]",
+          "partitionKey": {
+            "paths": [
+              "[parameters('partitionKeyPath')]"
+            ],
+            "kind": "Hash"
+          },
+          "indexingPolicy": {
+            "indexingMode": "consistent",
+            "automatic": true,
+            "includedPaths": [
+              {
+                "path": "/*"
+              }
+            ],
+            "excludedPaths": [
+              {
+                "path": "/\"_etag\"/?"
+              }
+            ]
+          }
+        },
+        "options": {
+          "throughput": "[parameters('throughput')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosAccountName'), parameters('sqlDatabaseName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.MachineLearningServices/workspaces",
+      "apiVersion": "2024-04-01-preview",
+      "name": "[format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))]",
+      "location": "[parameters('location')]",
+      "kind": "Project",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "displayName": "[format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))]",
+        "description": "Cosmopilot AI Foundry Project",
+        "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
+        "enableDataIsolation": "[parameters('enableDataIsolation')]"
+      },
+      "tags": {
+        "environment": "demo"
+      }
+    }
+  ],
+  "outputs": {
+    "cosmosAccountName": {
+      "type": "string",
+      "value": "[parameters('cosmosAccountName')]"
+    },
+    "cosmosAccountEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2024-05-15').documentEndpoint]"
+    },
+    "sqlDatabaseName": {
+      "type": "string",
+      "value": "[parameters('sqlDatabaseName')]"
+    },
+    "containerName": {
+      "type": "string",
+      "value": "[parameters('containerName')]"
+    },
+    "projectName": {
+      "type": "string",
+      "value": "[format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))]"
+    },
+    "projectId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id)))]"
+    },
+    "projectWorkspaceId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))), '2024-04-01-preview').workspaceId]"
+    },
+    "modelDeploymentName": {
+      "type": "string",
+      "value": "gpt-4o-nano"
+    },
+    "modelType": {
+      "type": "string",
+      "value": "gpt-4o-nano"
+    },
+    "embeddingDeploymentName": {
+      "type": "string",
+      "value": "text-embedding-3-nano"
+    },
+    "embeddingModelType": {
+      "type": "string",
+      "value": "text-embedding-3-nano"
+    }
+  }
+}
