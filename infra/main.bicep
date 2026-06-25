@@ -12,7 +12,7 @@ param environmentName string
   'uksouth'
   'swedencentral'
 ])
-param location string = resourceGroup().location
+param location string
 
 @description('The Cosmos DB account name. It must be globally unique across Azure and use only lowercase letters, numbers, and hyphens.')
 param cosmosAccountName string
@@ -126,23 +126,36 @@ resource containerResource 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   }
 }
 
-// ===== Foundry Project (standalone, auto-manages infrastructure) =====
-resource foundryProject 'Microsoft.MachineLearningServices/workspaces@2024-04-01-preview' = {
+// ===== Foundry Resource (AI Services account) =====
+resource foundryResource 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: projectFullName
   location: location
-  kind: 'Project'
+  kind: 'AIServices'
   identity: {
     type: 'SystemAssigned'
   }
+  sku: {
+    name: 'S0'
+  }
   properties: {
-    displayName: projectFullName
-    description: 'Cosmopilot AI Foundry Project'
+    allowProjectManagement: true
+    customSubDomainName: projectFullName
     publicNetworkAccess: publicNetworkAccess
-    enableDataIsolation: enableDataIsolation
   }
   tags: {
     environment: demoEnvironment
   }
+}
+
+// ===== Foundry Project (hub-less, new experience) =====
+resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' = {
+  parent: foundryResource
+  name: projectFullName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
 }
 
 // ===== Outputs =====
@@ -153,9 +166,10 @@ output sqlDatabaseName string = sqlDatabase.name
 output containerName string = containerResource.name
 
 // Foundry Project outputs
-output projectName string = foundryProject.name
-output projectId string = foundryProject.id
-output projectWorkspaceId string = foundryProject.properties.workspaceId
+output foundryResourceName string = foundryResource.name
+output foundryResourceId string = foundryResource.id
+output foundryProjectName string = foundryProject.name
+output foundryProjectId string = foundryProject.id
 output modelDeploymentName string = modelDeploymentName
 output modelType string = modelType
 output embeddingDeploymentName string = embeddingDeploymentName

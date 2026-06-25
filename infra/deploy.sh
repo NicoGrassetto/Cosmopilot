@@ -46,7 +46,8 @@ prompt_bool() {
       read -r -p "$prompt_text [y/N]: " value
       value="${value:-N}"
     fi
-    case "${value,,}" in
+    value_lower=$(echo "$value" | tr '[:upper:]' '[:lower:]')
+    case "$value_lower" in
       y|yes) value="true"; break ;;
       n|no) value="false"; break ;;
       "") value="$default_value"; break ;;
