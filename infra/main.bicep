@@ -53,10 +53,10 @@ param enableDataIsolation bool = false
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var projectFullName = '${projectName}-${uniqueSuffix}'
 var demoEnvironment = 'demo'
-var modelDeploymentName = 'gpt-4o-nano'
-var modelType = 'gpt-4o-nano'
-var embeddingDeploymentName = 'text-embedding-3-nano'
-var embeddingModelType = 'text-embedding-3-nano'
+var modelDeploymentName = 'gpt-4-1-nano'
+var modelType = 'gpt-4.1-nano'
+var embeddingDeploymentName = 'text-embedding-ada-002'
+var embeddingModelType = 'text-embedding-ada-002'
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   name: cosmosAccountName
@@ -158,6 +158,43 @@ resource foundryProject 'Microsoft.CognitiveServices/accounts/projects@2025-04-0
   properties: {}
 }
 
+// ===== Model Deployments =====
+resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryResource
+  name: modelDeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 1
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: modelType
+    }
+  }
+  dependsOn: [
+    foundryProject
+  ]
+}
+
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryResource
+  name: embeddingDeploymentName
+  sku: {
+    name: 'Standard'
+    capacity: 1
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: embeddingModelType
+    }
+  }
+  dependsOn: [
+    foundryProject
+  ]
+}
+
 // ===== Outputs =====
 // Cosmos DB outputs
 output cosmosAccountName string = cosmosAccount.name
@@ -171,6 +208,8 @@ output foundryResourceId string = foundryResource.id
 output foundryProjectName string = foundryProject.name
 output foundryProjectId string = foundryProject.id
 output modelDeploymentName string = modelDeploymentName
+output modelDeploymentId string = modelDeployment.id
 output modelType string = modelType
 output embeddingDeploymentName string = embeddingDeploymentName
+output embeddingDeploymentId string = embeddingDeployment.id
 output embeddingModelType string = embeddingModelType
