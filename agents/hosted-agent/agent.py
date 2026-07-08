@@ -7,9 +7,15 @@ data analysis and Cosmos DB tools for live queries.
 """
 
 import os
+import sys
+from pathlib import Path
 
 from azure.ai.projects import FoundryClient
 from azure.identity import DefaultAzureCredential
+
+# Shared, single-source-of-truth tool definitions (see agents/_shared).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _shared import tools as build_tools  # noqa: E402
 
 
 def create_agent(client: FoundryClient) -> str:
@@ -30,53 +36,9 @@ When analyzing data:
 - Use code interpreter for calculations and charts
 - Cite specific data points with timestamps
 - Flag any anomalies or threshold breaches""",
-        tools=[
-            {"type": "code_interpreter"},
-            {
-                "type": "function",
-                "function": {
-                    "name": "query_cosmos_db",
-                    "description": "Execute a SQL query against Cosmos DB and return results",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "SQL query to execute against Cosmos DB",
-                            },
-                            "container": {
-                                "type": "string",
-                                "description": "Target container name",
-                                "default": "conversations",
-                            },
-                        },
-                        "required": ["query"],
-                    },
-                },
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "get_change_feed_events",
-                    "description": "Retrieve recent change feed events from Cosmos DB",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "since_minutes": {
-                                "type": "integer",
-                                "description": "Number of minutes to look back",
-                                "default": 60,
-                            },
-                            "container": {
-                                "type": "string",
-                                "description": "Target container name",
-                                "default": "conversations",
-                            },
-                        },
-                    },
-                },
-            },
-        ],
+        tools=build_tools(
+            "code_interpreter", "query_cosmos_db", "get_change_feed_events"
+        ),
     )
     return agent.id
 
