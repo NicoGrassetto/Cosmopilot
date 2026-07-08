@@ -1,0 +1,99 @@
+# Cosmopilot Multi-Agent Scenario (MAF)
+#
+# Uses the Microsoft Agent Framework to orchestrate multiple specialized agents
+# for end-to-end incident triage and resolution of operational issues detected
+# in Cosmos DB telemetry.
+
+name: cosmopilot-incident-triage
+description: >
+  Multi-agent system for automated incident triage. Agents collaborate to
+  detect anomalies, diagnose root causes, recommend fixes, and generate
+  incident reports from Cosmos DB operational data.
+version: 1.0.0
+
+agents:
+  - name: detector
+    type: LLM
+    model: azure/gpt-4o-mini
+    instructions: >
+      You are the Anomaly Detector agent. Analyze incoming telemetry data and
+      identify anomalies, threshold breaches, and unusual patterns. Output a
+      structured assessment with: metric_name, current_value, expected_range,
+      deviation_pct, and anomaly_type (spike, drop, trend_shift, flatline).
+    tools:
+      - query_cosmos_db
+      - get_change_feed_events
+
+  - name: diagnostician
+    type: LLM
+    model: azure/gpt-4o-mini
+    instructions: >
+      You are the Root Cause Diagnostician agent. Given an anomaly assessment,
+      investigate possible root causes by correlating with recent deployments,
+      configuration changes, and related metrics. Output: probable_causes (ranked),
+      confidence_score, supporting_evidence, and affected_components.
+    tools:
+      - query_cosmos_db
+      - code_interpreter
+
+  - name: remediator
+    type: LLM
+    model: azure/gpt-4o-mini
+    instructions: >
+      You are the Remediation Advisor agent. Based on the diagnosis, suggest
+      concrete remediation steps. For each suggestion include: action, risk_level
+      (low/medium/high), estimated_impact, rollback_plan, and whether it requires
+      human_approval (true/false for high-risk actions).
+    tools:
+      - code_interpreter
+
+  - name: reporter
+    type: LLM
+    model: azure/gpt-4o-mini
+    instructions: >
+      You are the Incident Reporter agent. Synthesize all findings from the
+      detection, diagnosis, and remediation phases into a clear, executive-friendly
+      incident report. Include: title, severity, timeline, root cause summary,
+      recommended actions, and current status. Format as markdown.
+    tools:
+      - code_interpreter
+
+workflow:
+  kind: sequential
+  steps:
+    - agent: detector
+      input: "${telemetry.data}"
+      output: anomaly_assessment
+
+    - agent: diagnostician
+      input:
+        anomaly: "${anomaly_assessment}"
+        telemetry: "${telemetry.data}"
+      output: diagnosis
+
+    - agent: remediator
+      input:
+        diagnosis: "${diagnosis}"
+        anomaly: "${anomaly_assessment}"
+      output: remediation_plan
+
+    - agent: reporter
+      input:
+        anomaly: "${anomaly_assessment}"
+        diagnosis: "${diagnosis}"
+        remediation: "${remediation_plan}"
+        timestamp: "${datetime.now}"
+      output: incident_report
+
+handoff_policy:
+  mode: sequential
+  allow_escalation: true
+  escalation_trigger: "confidence_score < 0.6"
+  escalation_target: human
+
+human_in_the_loop:
+  enabled: true
+  gates:
+    - after_step: remediator
+      condition: "any(action.risk_level == 'high' for action in remediation_plan.actions)"
+      message: "High-risk remediation requires approval. Review the plan above."
