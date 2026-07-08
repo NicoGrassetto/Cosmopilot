@@ -1,0 +1,22 @@
+name: cosmopilot-data-insights
+description: >
+  Hosted agent that provides real-time operational insights by querying
+  Azure Cosmos DB and analyzing telemetry data with code interpreter.
+version: 1.0.0
+
+model:
+  deployment: gpt-4o-mini
+  provider: foundry
+
+tools:
+  - type: code_interpreter
+  - type: function
+    name: query_cosmos_db
+  - type: function
+    name: get_change_feed_events
+
+environment:
+  AZURE_AI_PROJECT_ENDPOINT: ${env:AZURE_AI_PROJECT_ENDPOINT}
+  COSMOS_DB_ENDPOINT: ${env:COSMOS_DB_ENDPOINT}
+  COSMOS_DB_DATABASE: cosmopilot
+  COSMOS_DB_CONTAINER: conversations

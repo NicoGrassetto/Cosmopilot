@@ -1,0 +1,109 @@
+# Cosmopilot Data Enrichment Workflow
+#
+# A sequential workflow that processes incoming operational data:
+# 1. Uses the prompt agent to classify and summarize events
+# 2. Enriches data with vector embeddings
+# 3. Stores results back in Cosmos DB
+#
+# References the prompt agent defined in ../prompt-agent/cosmopilot-assistant.prompty
+
+name: cosmopilot-data-enrichment
+description: >
+  End-to-end workflow that ingests operational events from Cosmos DB change feed,
+  classifies them using the prompt agent, generates embeddings, and writes
+  enriched documents back to the database.
+version: 1.0.0
+
+trigger:
+  type: event
+  source: cosmos-db-change-feed
+  container: conversations
+  database: cosmopilot
+
+agents:
+  - name: classifier
+    type: prompt
+    source: ../prompt-agent/cosmopilot-assistant.prompty
+    override:
+      options:
+        temperature: 0.2
+        maxOutputTokens: 512
+      inputs:
+        - name: user_query
+          value: >
+            Classify the following operational event into one of these categories:
+            [performance, error, security, configuration, scaling, deployment].
+            Return JSON with fields: category, severity (low/medium/high/critical),
+            summary (one sentence).
+
+            Event: ${event.body}
+
+  - name: embedder
+    type: function
+    runtime: python
+    entrypoint: embed_document
+    config:
+      model: text-embedding-3-small
+      dimensions: 1536
+
+  - name: writer
+    type: function
+    runtime: python
+    entrypoint: write_to_cosmos
+    config:
+      container: conversations
+      database: cosmopilot
+
+steps:
+  - id: classify-event
+    agent: classifier
+    input:
+      event: ${trigger.event}
+    output: classification
+
+  - id: generate-embedding
+    agent: embedder
+    input:
+      text: "${classification.summary} ${trigger.event.body}"
+    output: embedding
+
+  - id: write-enriched
+    agent: writer
+    input:
+      document:
+        id: ${trigger.event.id}
+        originalEvent: ${trigger.event.body}
+        classification: ${classification}
+        embedding: ${embedding.vector}
+        enrichedAt: ${datetime.now}
+        partitionKey: ${trigger.event.tenantId}
+    output: result
+
+  - id: notify-on-critical
+    condition: "${classification.severity} == 'critical'"
+    agent: classifier
+    input:
+      user_query: >
+        Generate a brief incident alert summary for this critical event.
+        Category: ${classification.category}
+        Summary: ${classification.summary}
+        Raw event: ${trigger.event.body}
+    output: alert
+
+error_handling:
+  retry:
+    max_attempts: 3
+    backoff: exponential
+    initial_delay_seconds: 2
+  on_failure: log_and_continue
+
+observability:
+  tracing: enabled
+  metrics:
+    - name: events_processed
+      type: counter
+    - name: classification_latency_ms
+      type: histogram
+    - name: critical_events
+      type: counter
+      condition: "${classification.severity} == 'critical'"
