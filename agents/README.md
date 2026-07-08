@@ -1,6 +1,6 @@
 # Cosmopilot Agents
 
-This directory contains four agent implementations demonstrating different Azure AI Foundry agent patterns for the Cosmopilot project, plus a shared [`skills/`](./skills/) primitive that several of them reuse.
+This directory contains four agent implementations demonstrating different Azure AI Foundry agent patterns for the Cosmopilot project, plus shared [`_shared/`](./_shared/) tool definitions and a [`skills/`](./skills/) behavioral primitive that several of them reuse.
 
 ## Agents Overview
 
@@ -10,6 +10,8 @@ This directory contains four agent implementations demonstrating different Azure
 | [hosted-agent](./hosted-agent/) | Hosted Agent | Python agent deployed on Foundry with code interpreter & custom tools |
 | [workflow](./workflow/) | Workflow (YAML) | Event-driven data enrichment pipeline referencing the prompt agent |
 | [multi-agent](./multi-agent/) | MAF Multi-Agent | Incident triage system with 4 collaborating agents |
+
+> All agents share their tool definitions from [`_shared/`](./_shared/), and several also share versioned behavioral guidelines from [`skills/`](./skills/) — see below.
 
 ## Skills (shared behavioral primitive)
 
@@ -34,6 +36,28 @@ provisioning, and versioning guidance is in [`skills/README.md`](./skills/README
 
 These are distinct from the dev-time GitHub Copilot skills in `.github/skills/`,
 even though both use the same `SKILL.md` format.
+
+## Shared tools (DRY)
+
+Tools are declared **once** in [`_shared/`](./_shared/) and reused across every
+agent, instead of being re-declared per agent:
+
+```python
+from _shared import tools
+
+tools=tools("code_interpreter", "query_cosmos_db", "get_change_feed_events")
+```
+
+- **Python agents** (`hosted-agent`, `multi-agent`) import `tools(*names)` — the
+  single source of truth for each tool's JSON schema and implementation.
+- **All agent styles** (including `prompt-agent` and `workflow`, which can't
+  import Python) can share the same tools through a **Foundry Toolbox**: the
+  `cosmos-mcp` server in `_shared/` exposes the Cosmos tools over MCP, and
+  `_shared/toolbox.yaml` bundles them with `code_interpreter` behind one
+  `TOOLBOX_ENDPOINT`.
+
+Run the tool tests with `python -m unittest discover -s agents/_shared/tests`.
+Full details in [`_shared/README.md`](./_shared/README.md).
 
 ## Architecture
 
@@ -80,11 +104,14 @@ even though both use the same `SKILL.md` format.
 - Python 3.11+
 - Azure CLI authenticated (`az login`)
 - Azure AI Foundry project provisioned (see `/infra`)
-- Environment variables set:
+- Environment variables set — copy the repo-root [`.env.example`](../.env.example)
+  to `.env` and fill in the placeholders:
   ```bash
-  export AZURE_AI_PROJECT_ENDPOINT="https://<your-account>.services.ai.azure.com"
-  export COSMOS_DB_ENDPOINT="https://<your-cosmosdb>.documents.azure.com:443/"
+  cp .env.example .env          # macOS / Linux
+  Copy-Item .env.example .env   # Windows PowerShell
   ```
+  At minimum set `AZURE_AI_PROJECT_ENDPOINT` and `COSMOS_DB_ENDPOINT`; the file
+  documents every variable each agent and tool uses.
 
 ### Run the Prompt Agent
 

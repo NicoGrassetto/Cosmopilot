@@ -1,0 +1,6 @@
+# Dependencies for the Cosmos DB MCP server (Foundry Toolbox layer).
+# The shared tool *definitions* in cosmos_tools.py need none of these — only the
+# MCP server and the live Cosmos implementations do.
+mcp>=1.2.0
+azure-cosmos>=4.7.0
+azure-identity>=1.19.0
