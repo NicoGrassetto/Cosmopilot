@@ -7,10 +7,16 @@ in a sequential workflow with human-in-the-loop gates.
 """
 
 import os
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 from azure.ai.projects import FoundryClient
 from azure.identity import DefaultAzureCredential
+
+# Shared, single-source-of-truth tool definitions (see agents/_shared).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _shared import tools as build_tools  # noqa: E402
 
 
 @dataclass
@@ -29,7 +35,7 @@ AGENTS = {
             "Output a structured JSON assessment with: metric_name, current_value, "
             "expected_range, deviation_pct, and anomaly_type."
         ),
-        tools=[{"type": "code_interpreter"}],
+        tools=build_tools("code_interpreter"),
     ),
     "diagnostician": AgentConfig(
         name="cosmopilot-diagnostician",
@@ -39,7 +45,7 @@ AGENTS = {
             "Output: probable_causes (ranked), confidence_score, supporting_evidence, "
             "and affected_components as JSON."
         ),
-        tools=[{"type": "code_interpreter"}],
+        tools=build_tools("code_interpreter"),
     ),
     "remediator": AgentConfig(
         name="cosmopilot-remediator",
@@ -48,7 +54,7 @@ AGENTS = {
             "concrete remediation steps. For each: action, risk_level, "
             "estimated_impact, rollback_plan, and human_approval required."
         ),
-        tools=[{"type": "code_interpreter"}],
+        tools=build_tools("code_interpreter"),
     ),
     "reporter": AgentConfig(
         name="cosmopilot-reporter",
@@ -57,7 +63,7 @@ AGENTS = {
             "incident report with: title, severity, timeline, root cause, "
             "recommended actions, and status. Format as markdown."
         ),
-        tools=[{"type": "code_interpreter"}],
+        tools=build_tools("code_interpreter"),
     ),
 }
 

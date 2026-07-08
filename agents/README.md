@@ -11,6 +11,30 @@ This directory contains four agent implementations demonstrating different Azure
 | [workflow](./workflow/) | Workflow (YAML) | Event-driven data enrichment pipeline referencing the prompt agent |
 | [multi-agent](./multi-agent/) | MAF Multi-Agent | Incident triage system with 4 collaborating agents |
 
+> All agents share their tool definitions from [`_shared/`](./_shared/) — see below.
+
+## Shared tools (DRY)
+
+Tools are declared **once** in [`_shared/`](./_shared/) and reused across every
+agent, instead of being re-declared per agent:
+
+```python
+from _shared import tools
+
+tools=tools("code_interpreter", "query_cosmos_db", "get_change_feed_events")
+```
+
+- **Python agents** (`hosted-agent`, `multi-agent`) import `tools(*names)` — the
+  single source of truth for each tool's JSON schema and implementation.
+- **All agent styles** (including `prompt-agent` and `workflow`, which can't
+  import Python) can share the same tools through a **Foundry Toolbox**: the
+  `cosmos-mcp` server in `_shared/` exposes the Cosmos tools over MCP, and
+  `_shared/toolbox.yaml` bundles them with `code_interpreter` behind one
+  `TOOLBOX_ENDPOINT`.
+
+Run the tool tests with `python -m unittest discover -s agents/_shared/tests`.
+Full details in [`_shared/README.md`](./_shared/README.md).
+
 ## Architecture
 
 ```
@@ -56,11 +80,14 @@ This directory contains four agent implementations demonstrating different Azure
 - Python 3.11+
 - Azure CLI authenticated (`az login`)
 - Azure AI Foundry project provisioned (see `/infra`)
-- Environment variables set:
+- Environment variables set — copy the repo-root [`.env.example`](../.env.example)
+  to `.env` and fill in the placeholders:
   ```bash
-  export AZURE_AI_PROJECT_ENDPOINT="https://<your-account>.services.ai.azure.com"
-  export COSMOS_DB_ENDPOINT="https://<your-cosmosdb>.documents.azure.com:443/"
+  cp .env.example .env          # macOS / Linux
+  Copy-Item .env.example .env   # Windows PowerShell
   ```
+  At minimum set `AZURE_AI_PROJECT_ENDPOINT` and `COSMOS_DB_ENDPOINT`; the file
+  documents every variable each agent and tool uses.
 
 ### Run the Prompt Agent
 
