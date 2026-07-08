@@ -1,0 +1,22 @@
+[project]
+name = "foundry-eval-demo"
+version = "0.1.0"
+description = "Reusable evaluation framework for Azure AI Foundry agents"
+requires-python = ">=3.10"
+
+dependencies = [
+    "azure-ai-evaluation>=1.18.0",
+    "azure-ai-projects>=1.0.0",
+    "azure-identity>=1.16.0",
+    "openai>=1.40.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+redteam = ["pyrit>=0.5.0"]
+dev = ["pytest>=8.0", "ruff>=0.4.0"]
+
+[project.scripts]
+eval-run = "runner:main"
+eval-report = "report:main"

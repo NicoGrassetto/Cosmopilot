@@ -1,0 +1,11 @@
+# Azure AI Foundry project connection — used by safety evaluators & GroundednessPro
+azure_ai_project:
+  subscription_id: ${AZURE_SUBSCRIPTION_ID}
+  resource_group_name: ${AZURE_RESOURCE_GROUP}
+  project_name: ${AZURE_AI_PROJECT_NAME}
+
+# Alternative: project URL format
+# azure_ai_project_url: "https://{resource_name}.services.ai.azure.com/api/projects/{project_name}"
+
+# Agent endpoint
+agent_endpoint: ${AZURE_AI_PROJECT_ENDPOINT}
