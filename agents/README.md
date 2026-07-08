@@ -1,6 +1,6 @@
 # Cosmopilot Agents
 
-This directory contains four agent implementations demonstrating different Azure AI Foundry agent patterns for the Cosmopilot project.
+This directory contains four agent implementations demonstrating different Azure AI Foundry agent patterns for the Cosmopilot project, plus a shared [`skills/`](./skills/) primitive that several of them reuse.
 
 ## Agents Overview
 
@@ -10,6 +10,30 @@ This directory contains four agent implementations demonstrating different Azure
 | [hosted-agent](./hosted-agent/) | Hosted Agent | Python agent deployed on Foundry with code interpreter & custom tools |
 | [workflow](./workflow/) | Workflow (YAML) | Event-driven data enrichment pipeline referencing the prompt agent |
 | [multi-agent](./multi-agent/) | MAF Multi-Agent | Incident triage system with 4 collaborating agents |
+
+## Skills (shared behavioral primitive)
+
+Beyond the four agent patterns, [`skills/`](./skills/) holds **Foundry skills** —
+versioned [`SKILL.md`](https://agentskills.io) behavioral guidelines (escalation
+policy, query standards, output formats) that several agents share instead of
+duplicating the same rules in each prompt. Author a skill once, provision it to
+your Foundry project through the versioned Skills API, and update it without
+redeploying any agent.
+
+| Skill | Purpose | Used by |
+|-------|---------|---------|
+| `incident-triage-policy` | Severity thresholds, escalation + human-approval gates | multi-agent |
+| `cosmos-query-standards` | Safe, cost-aware Cosmos DB query conventions | hosted-agent, multi-agent |
+| `change-feed-summary-format` | Canonical event classification / summary format | workflow, hosted-agent, multi-agent |
+
+Skills reach agents two ways: **toolbox (MCP) discovery** for prompt/multi-agent
+and external MCP clients, or **direct injection** for the hosted agent (it
+appends the skill bodies to its instructions at startup — see
+[`hosted-agent/skills.py`](./hosted-agent/skills.py)). Full authoring,
+provisioning, and versioning guidance is in [`skills/README.md`](./skills/README.md).
+
+These are distinct from the dev-time GitHub Copilot skills in `.github/skills/`,
+even though both use the same `SKILL.md` format.
 
 ## Architecture
 
@@ -85,6 +109,17 @@ cd agents/multi-agent
 pip install -r requirements.txt
 python orchestrator.py
 ```
+
+### Provision the shared skills
+
+```bash
+cd agents/skills
+pip install azure-ai-projects azure-identity
+python provision_skills.py --toolbox cosmopilot
+```
+
+Uploads each `SKILL.md` to your Foundry project as a versioned skill and
+references them from a `cosmopilot` toolbox. See [`skills/README.md`](./skills/README.md).
 
 ## Workflow Details
 

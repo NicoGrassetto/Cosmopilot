@@ -11,13 +11,12 @@ import os
 from azure.ai.projects import FoundryClient
 from azure.identity import DefaultAzureCredential
 
+from skills import build_skill_instructions
+
 
 def create_agent(client: FoundryClient) -> str:
     """Create the data-insights hosted agent in Foundry."""
-    agent = client.agents.create(
-        name="cosmopilot-data-insights",
-        model=os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini"),
-        instructions="""You are Cosmopilot Data Insights, a specialized agent that
+    base_instructions = """You are Cosmopilot Data Insights, a specialized agent that
 analyzes operational data from Azure Cosmos DB. You can:
 
 1. Query Cosmos DB containers for operational metrics
@@ -29,7 +28,17 @@ When analyzing data:
 - Always show your reasoning step by step
 - Use code interpreter for calculations and charts
 - Cite specific data points with timestamps
-- Flag any anomalies or threshold breaches""",
+- Flag any anomalies or threshold breaches"""
+
+    # Append organization skills (Cosmos query standards + event-summary format)
+    # as extra instructions. Skills are versioned in Foundry and shared across
+    # agents, so updating a skill needs no change here. See ../skills/README.md.
+    instructions = base_instructions + build_skill_instructions()
+
+    agent = client.agents.create(
+        name="cosmopilot-data-insights",
+        model=os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini"),
+        instructions=instructions,
         tools=[
             {"type": "code_interpreter"},
             {
