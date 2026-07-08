@@ -4,7 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.38.5.1644"
+      "version": "0.37.4.10188",
+      "templateHash": "7442369819815293720"
     }
   },
   "parameters": {
@@ -16,7 +17,6 @@
     },
     "location": {
       "type": "string",
-      "defaultValue": "[resourceGroup().location]",
       "allowedValues": [
         "eastus",
         "eastus2",
@@ -95,6 +95,15 @@
       }
     }
   },
+  "variables": {
+    "uniqueSuffix": "[uniqueString(resourceGroup().id)]",
+    "projectFullName": "[format('{0}-{1}', parameters('projectName'), variables('uniqueSuffix'))]",
+    "demoEnvironment": "demo",
+    "modelDeploymentName": "gpt-4-1-nano",
+    "modelType": "gpt-4.1-nano",
+    "embeddingDeploymentName": "text-embedding-ada-002",
+    "embeddingModelType": "text-embedding-ada-002"
+  },
   "resources": [
     {
       "type": "Microsoft.DocumentDB/databaseAccounts",
@@ -172,23 +181,76 @@
       ]
     },
     {
-      "type": "Microsoft.MachineLearningServices/workspaces",
-      "apiVersion": "2024-04-01-preview",
-      "name": "[format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))]",
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[variables('projectFullName')]",
       "location": "[parameters('location')]",
-      "kind": "Project",
+      "kind": "AIServices",
       "identity": {
         "type": "SystemAssigned"
       },
+      "sku": {
+        "name": "S0"
+      },
       "properties": {
-        "displayName": "[format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))]",
-        "description": "Cosmopilot AI Foundry Project",
-        "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
-        "enableDataIsolation": "[parameters('enableDataIsolation')]"
+        "allowProjectManagement": true,
+        "customSubDomainName": "[variables('projectFullName')]",
+        "publicNetworkAccess": "[parameters('publicNetworkAccess')]"
       },
       "tags": {
-        "environment": "demo"
+        "environment": "[variables('demoEnvironment')]"
       }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('projectFullName'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {},
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelDeploymentName'))]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 1
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('modelType')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('embeddingDeploymentName'))]",
+      "sku": {
+        "name": "Standard",
+        "capacity": 1
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('embeddingModelType')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
+      ]
     }
   ],
   "outputs": {
@@ -208,33 +270,45 @@
       "type": "string",
       "value": "[parameters('containerName')]"
     },
-    "projectName": {
+    "foundryResourceName": {
       "type": "string",
-      "value": "[format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))]"
+      "value": "[variables('projectFullName')]"
     },
-    "projectId": {
+    "foundryResourceId": {
       "type": "string",
-      "value": "[resourceId('Microsoft.MachineLearningServices/workspaces', format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id)))]"
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
     },
-    "projectWorkspaceId": {
+    "foundryProjectName": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.MachineLearningServices/workspaces', format('{0}-{1}', parameters('projectName'), uniqueString(resourceGroup().id))), '2024-04-01-preview').workspaceId]"
+      "value": "[variables('projectFullName')]"
+    },
+    "foundryProjectId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
     },
     "modelDeploymentName": {
       "type": "string",
-      "value": "gpt-4o-nano"
+      "value": "[variables('modelDeploymentName')]"
+    },
+    "modelDeploymentId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
     },
     "modelType": {
       "type": "string",
-      "value": "gpt-4o-nano"
+      "value": "[variables('modelType')]"
     },
     "embeddingDeploymentName": {
       "type": "string",
-      "value": "text-embedding-3-nano"
+      "value": "[variables('embeddingDeploymentName')]"
+    },
+    "embeddingDeploymentId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('embeddingDeploymentName'))]"
     },
     "embeddingModelType": {
       "type": "string",
-      "value": "text-embedding-3-nano"
+      "value": "[variables('embeddingModelType')]"
     }
   }
 }

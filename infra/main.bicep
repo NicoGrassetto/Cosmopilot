@@ -190,8 +190,10 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
       name: embeddingModelType
     }
   }
+  // Serialize model deployments: a Cognitive Services account only allows one
+  // deployment operation at a time, so wait for the chat model deployment.
   dependsOn: [
-    foundryProject
+    modelDeployment
   ]
 }
 
