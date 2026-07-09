@@ -3,11 +3,33 @@ import json
 import os
 
 from azure.ai.evaluation import (
+    BleuScoreEvaluator,
+    CodeVulnerabilityEvaluator,
     CoherenceEvaluator,
+    ContentSafetyEvaluator,
+    DocumentRetrievalEvaluator,
+    F1ScoreEvaluator,
     FluencyEvaluator,
+    GleuScoreEvaluator,
     GroundednessEvaluator,
+    GroundednessProEvaluator,
+    HateUnfairnessEvaluator,
+    IndirectAttackEvaluator,
+    IntentResolutionEvaluator,
+    MeteorScoreEvaluator,
+    ProtectedMaterialEvaluator,
     RelevanceEvaluator,
+    ResponseCompletenessEvaluator,
+    RetrievalEvaluator,
+    RougeScoreEvaluator,
+    RougeType,
+    SelfHarmEvaluator,
+    SexualEvaluator,
     SimilarityEvaluator,
+    TaskAdherenceEvaluator,
+    ToolCallAccuracyEvaluator,
+    UngroundedAttributesEvaluator,
+    ViolenceEvaluator,
     evaluate,
 )
 from azure.ai.projects import FoundryClient
@@ -116,12 +138,59 @@ evaluator_model_config = {
     "api_version": os.environ.get("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"),
 }
 
-foundry_evaluators = {
-    "groundedness": GroundednessEvaluator(evaluator_model_config),
-    "relevance": RelevanceEvaluator(evaluator_model_config),
+# Safety evaluators call the Azure AI Content Safety service and need the
+# project + a credential instead of a judge-model config.
+azure_ai_project = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+
+# NOTE: The following built-in evaluators are portal/preview-only and are NOT
+# exposed as importable classes in the azure-ai-evaluation SDK (v1.18), so they
+# can't be constructed here. Configure them from the Foundry portal instead:
+#   Rubric, Task Completion, Customer Satisfaction, Task Navigation Efficiency,
+#   Tool Selection, Tool Input Accuracy, Tool Output Utilization,
+#   Tool Call Success, Quality Grader, Prohibited Actions, Sensitive Data Leakage.
+
+# --- Quality / textual-similarity / RAG ------------------------------------
+# Compatible dataset fields: query, response, context, ground_truth.
+quality_evaluators = {
     "coherence": CoherenceEvaluator(evaluator_model_config),
     "fluency": FluencyEvaluator(evaluator_model_config),
     "similarity": SimilarityEvaluator(evaluator_model_config),
+    "f1_score": F1ScoreEvaluator(),
+    "bleu": BleuScoreEvaluator(),
+    "gleu": GleuScoreEvaluator(),
+    "meteor": MeteorScoreEvaluator(),
+    "rouge": RougeScoreEvaluator(RougeType.ROUGE_L),
+    "retrieval": RetrievalEvaluator(evaluator_model_config),
+    "groundedness": GroundednessEvaluator(evaluator_model_config),
+    "groundedness_pro": GroundednessProEvaluator(credential, azure_ai_project),
+    "relevance": RelevanceEvaluator(evaluator_model_config),
+    "response_completeness": ResponseCompletenessEvaluator(evaluator_model_config),
+    # DocumentRetrievalEvaluator needs a retrieval-specific dataset
+    # (retrieval_ground_truth + retrieved_documents), so run it separately.
+    "document_retrieval": DocumentRetrievalEvaluator(),
+}
+
+# --- Risk and safety --------------------------------------------------------
+# Compatible dataset fields: query, response (content is sent to Content Safety).
+safety_evaluators = {
+    "content_safety": ContentSafetyEvaluator(credential, azure_ai_project),
+    "hate_unfairness": HateUnfairnessEvaluator(credential, azure_ai_project),
+    "sexual": SexualEvaluator(credential, azure_ai_project),
+    "violence": ViolenceEvaluator(credential, azure_ai_project),
+    "self_harm": SelfHarmEvaluator(credential, azure_ai_project),
+    "protected_material": ProtectedMaterialEvaluator(credential, azure_ai_project),
+    "indirect_attack": IndirectAttackEvaluator(credential, azure_ai_project),
+    "code_vulnerability": CodeVulnerabilityEvaluator(credential, azure_ai_project),
+    "ungrounded_attributes": UngroundedAttributesEvaluator(credential, azure_ai_project),
+}
+
+# --- Agent ------------------------------------------------------------------
+# Require a dataset with agent traces: tool_calls + tool_definitions in addition
+# to query/response. Run against an agent-run dataset, not the simple Q&A CSV.
+agent_evaluators = {
+    "intent_resolution": IntentResolutionEvaluator(evaluator_model_config),
+    "task_adherence": TaskAdherenceEvaluator(evaluator_model_config),
+    "tool_call_accuracy": ToolCallAccuracyEvaluator(evaluator_model_config),
 }
 
 # evaluate() expects a JSONL file with query/response/context/ground_truth
@@ -146,8 +215,26 @@ with open(DATASET_CSV, newline="") as _src, open(DATASET_JSONL, "w") as _dst:
             + "\n"
         )
 
+# Each run uses only evaluators compatible with the dataset it points at.
+# All evaluators in a single evaluate() call must accept the same input fields.
 evaluate(
     data=DATASET_JSONL,
-    evaluators=foundry_evaluators,
-    azure_ai_project=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+    evaluators=quality_evaluators,
+    azure_ai_project=azure_ai_project,
 )
+
+evaluate(
+    data=DATASET_JSONL,
+    evaluators=safety_evaluators,
+    azure_ai_project=azure_ai_project,
+)
+
+# The agent run needs an agent-trace dataset (with tool_calls / tool_definitions).
+# Point AGENT_DATASET_JSONL at that dataset before enabling this run.
+AGENT_DATASET_JSONL = os.path.join(_DATA_DIR, "agent_eval_dataset.jsonl")
+if os.path.exists(AGENT_DATASET_JSONL):
+    evaluate(
+        data=AGENT_DATASET_JSONL,
+        evaluators=agent_evaluators,
+        azure_ai_project=azure_ai_project,
+    )
