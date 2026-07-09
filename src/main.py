@@ -125,6 +125,48 @@ openai_client.evals.create(
     ],
 )
 
+openai_client.evals.create(
+    name=f"{PREFIX}-string_check",
+    data_source_config=custom_data_source_config,
+    testing_criteria=[
+        {
+            "type": "string_check",
+            "name": "answer-exact-match",
+            "input": "{{sample.output_text}}",
+            "reference": "{{item.answer}}",
+            "operation": "eq",
+        }
+    ],
+)
+
+openai_client.evals.create(
+    name=f"{PREFIX}-score_model",
+    data_source_config=custom_data_source_config,
+    testing_criteria=[
+        {
+            "type": "score_model",
+            "name": "answer-quality-scorer",
+            "model": model,
+            "input": [
+                {
+                    "role": "developer",
+                    "content": (
+                        "Score how well the answer resolves the user's question "
+                        "about Azure Cosmos DB operations, from 0 (useless) to 1 "
+                        "(fully correct and complete). Respond with only the number."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": "Question: {{item.question}}\nAnswer: {{sample.output_text}}",
+                },
+            ],
+            "range": [0, 1],
+            "pass_threshold": 0.7,
+        }
+    ],
+)
+
 # ---------------------------------------------------------------------------
 # Foundry built-in evaluators (azure-ai-evaluation SDK).
 #
