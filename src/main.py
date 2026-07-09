@@ -32,11 +32,11 @@ from azure.ai.evaluation import (
     ViolenceEvaluator,
     evaluate,
 )
-from azure.ai.projects import FoundryClient
+from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 
 credential = DefaultAzureCredential()
-client = FoundryClient(
+client = AIProjectClient(
     endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
     credential=credential,
 )
@@ -95,8 +95,9 @@ openai_client.evals.create(
     ],
 )
 
+# NOTE: The public OpenAI SDK type also lists "cosine", but the Azure Foundry
+# eval service rejects it (400 UserError), so it's intentionally excluded here.
 TEXT_SIMILARITY_METRICS = [
-    "cosine",
     "fuzzy_match",
     "bleu",
     "gleu",
