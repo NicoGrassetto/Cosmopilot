@@ -1,0 +1,13 @@
+question,reference_answer
+Which Cosmos DB container had the highest RU/s consumption in the last hour?,The conversations container had the highest consumption at 2450 RU/s against a 400 RU/s provisioned limit.
+Were there any latency breaches in the last hour?,"Yes, the conversations container breached the p99 latency threshold with 3200ms."
+What is the provisioned throughput limit on the conversations container?,The conversations container is provisioned at 400 RU/s.
+How many change feed events were processed in the last 15 minutes?,"1,204 change feed events were processed across all monitored containers in the last 15 minutes."
+What is the recommended fix for a container throttling at 429 errors?,Increase provisioned RU/s or enable autoscale so the container can absorb burst traffic above the current limit.
+Which partition key is hottest in the telemetry container?,The device-region partition key eastus is the hottest with roughly 68 percent of write traffic.
+What was the average server-side latency for point reads today?,Average server-side latency for point reads today was 8ms.
+Is autoscale enabled on the events container?,"No, the events container uses manual throughput provisioning and is not configured for autoscale."
+How many documents are stored in the conversations container?,"The conversations container currently holds approximately 1.9 million documents totaling 4.2 GB."
+What caused the RU spike at 12:00 UTC?,A bulk import job wrote 5000 documents in a two-minute window which drove the RU spike at 12:00 UTC.
+Which region is serving read traffic for the multi-region account?,Read traffic is being served from West Europe as the nearest read region for the account.
+What is the current 429 rate-limited request percentage?,The current rate-limited request percentage is 3.1 percent of total requests on the conversations container.
