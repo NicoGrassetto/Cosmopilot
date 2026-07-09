@@ -59,7 +59,13 @@ Cosmopilot agents. Update the **Status** and **Where** columns as tools are adde
 | integration-assistant | Prompt agent | `openapi`, `mcp`, `function`, `custom` | `src/agents/integration-assistant/` |
 | browser-assistant | Prompt agent | `computer_use_preview`, `browser_automation_preview`, `image_generation` | `src/agents/browser-assistant/` |
 | orchestrator-assistant | Prompt agent | `a2a_preview`, `tool_search`, `namespace`, `toolbox_search_preview` | `src/agents/orchestrator-assistant/` |
+| deep-research-assistant | Hosted (LangGraph) | `web_search` (Foundry, called from graph) | `src/agents/deep-research-assistant/` |
 | cosmopilot-assistant | Prompt agent | none (prompt only) | `src/legacy_agents/prompt-agent/` |
+
+> **deep-research-assistant** is a *hosted agent* (bring-your-own LangChain/LangGraph
+> code), not a prompt agent. It runs an iterative plan → search → reflect → synthesize
+> loop and is surfaced on Foundry over the Responses protocol via
+> `langchain_azure_ai.agents.hosting`. Deploy with `azd` (see its `azure.yaml`).
 
 ---
 
