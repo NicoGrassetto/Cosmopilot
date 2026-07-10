@@ -24,6 +24,11 @@ from azure.ai.projects.models import (
 )
 from azure.identity import DefaultAzureCredential
 
+import sys  # noqa: E402 - path setup for the sibling skills helper
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from skills_util import apply_skills  # noqa: E402
+
 AGENT_NAME = "devops-assistant"
 PROMPT_FILE = Path(__file__).parent / "prompts" / "devops.txt"
 
@@ -41,16 +46,22 @@ def build_tools() -> list:
 
 
 def main() -> None:
-    client = AIProjectClient(
-        endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        credential=DefaultAzureCredential(),
+    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+    credential = DefaultAzureCredential()
+    client = AIProjectClient(endpoint=endpoint, credential=credential)
+
+    instructions = apply_skills(
+        Path(__file__).parent,
+        PROMPT_FILE.read_text(encoding="utf-8").strip(),
+        endpoint=endpoint,
+        credential=credential,
     )
 
     agent = client.agents.create_version(
         agent_name=AGENT_NAME,
         definition=PromptAgentDefinition(
             model=os.environ["AZURE_DEPLOYMENT_NAME"],
-            instructions=PROMPT_FILE.read_text(encoding="utf-8").strip(),
+            instructions=instructions,
             tools=build_tools(),
             temperature=0.2,
             top_p=0.95,

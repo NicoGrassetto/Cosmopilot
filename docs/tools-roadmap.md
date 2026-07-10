@@ -66,6 +66,35 @@ Cosmopilot agents. Update the **Status** and **Where** columns as tools are adde
 > loop and is surfaced on Foundry over the Responses protocol via
 > `langchain_azure_ai.agents.hosting`. Deploy with `azd` (see its `azure.yaml`).
 
+## Skills (preview)
+
+Every agent ships a local `skills/` directory. Each skill is a `SKILL.md` file
+(Agent Skills spec: YAML front matter + Markdown body) in its own subdirectory.
+At creation/startup each agent (via `src/agents/skills_util.py`):
+
+1. **Registers** the skills as versioned Foundry skills through the preview
+   Skills API (`project.beta.skills`, `allow_preview=True`) — best-effort, so a
+   missing preview or RBAC never blocks agent creation.
+2. **Injects** the skill bodies into the agent's system prompt (direct-injection
+   mode) so the guidelines take effect at runtime.
+
+| Agent | Skills |
+|---|---|
+| hr-assistant | `pto-accrual-policy`, `hr-escalation-protocol` |
+| research-assistant | `citation-standards`, `source-triage` |
+| knowledge-assistant | `grounding-discipline`, `data-classification` |
+| insights-assistant | `analysis-rigor`, `chart-standards` |
+| devops-assistant | `change-safety`, `incident-response` |
+| integration-assistant | `api-resilience`, `connector-safety` |
+| browser-assistant | `web-action-safety`, `visual-verification` |
+| orchestrator-assistant | `routing-policy`, `task-decomposition` |
+| deep-research-assistant | `research-synthesis`, `citation-standards` |
+
+> Skills registration needs the **Foundry User** role on the project and a
+> public endpoint (the Skills preview API doesn't support private networking).
+> `skills_util.py` is vendored into `deep-research-assistant/` so it is present
+> in that agent's Docker build context.
+
 ---
 
 _Tool list sourced from `azure-ai-projects` 2.3.0 `ToolType` enum._

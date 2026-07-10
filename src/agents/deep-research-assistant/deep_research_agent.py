@@ -25,6 +25,7 @@ Auth: DefaultAzureCredential (run `az login` for local dev).
 """
 
 import os
+import sys
 from pathlib import Path
 from typing import Annotated, TypedDict
 
@@ -37,21 +38,34 @@ from langgraph.graph.message import add_messages
 
 from langchain_azure_ai.agents.hosting import ResponsesHostServer
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from skills_util import discover_skills, inject_into_instructions, register_skills  # noqa: E402
+
 _AZURE_AI_SCOPE = "https://ai.azure.com/.default"
 _PROMPTS = Path(__file__).parent / "prompts"
 MAX_ITERATIONS = 2  # reflection loops before forcing synthesis
 
 _credential = DefaultAzureCredential()
+_endpoint = os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/")
 _project = AIProjectClient(
-    endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"].rstrip("/"),
+    endpoint=_endpoint,
     credential=_credential,
 )
 _openai_client = _project.get_openai_client()
 _deployment = os.environ.get("AZURE_AI_MODEL_DEPLOYMENT_NAME", "gpt-4-1-nano")
 
+# Foundry Skills (preview): loaded from ./skills and injected into the prompts
+# that produce reasoning and the final answer (direct-injection mode).
+_SKILLS = discover_skills(Path(__file__).parent)
+
 
 def _prompt(name: str) -> str:
     return (_PROMPTS / name).read_text(encoding="utf-8").strip()
+
+
+def _prompt_with_skills(name: str) -> str:
+    """Return a system prompt augmented with the agent's attached skills."""
+    return inject_into_instructions(_prompt(name), _SKILLS)
 
 
 def _build_chat_model() -> ChatOpenAI:
@@ -119,7 +133,7 @@ def reflect_node(state: ResearchState) -> dict:
     notes_blob = "\n\n".join(state["notes"])
     result = _model.invoke(
         [
-            ("system", _prompt("reflect.txt")),
+            ("system", _prompt_with_skills("reflect.txt")),
             ("human", f"Question:\n{state['question']}\n\nNotes:\n{notes_blob}"),
         ]
     )
@@ -144,7 +158,7 @@ def synthesize_node(state: ResearchState) -> dict:
     notes_blob = "\n\n".join(state["notes"])
     result = _model.invoke(
         [
-            ("system", _prompt("synthesize.txt")),
+            ("system", _prompt_with_skills("synthesize.txt")),
             ("human", f"Question:\n{state['question']}\n\nNotes:\n{notes_blob}"),
         ]
     )
@@ -171,6 +185,8 @@ def build_graph():
 
 
 def main() -> None:
+    # Register the local skills with Foundry (preview, best-effort) at startup.
+    register_skills(_endpoint, _credential, _SKILLS)
     port = int(os.environ.get("PORT", "8088"))
     ResponsesHostServer(build_graph()).run(port=port)
 

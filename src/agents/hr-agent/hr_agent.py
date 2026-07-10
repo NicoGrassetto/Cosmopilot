@@ -24,6 +24,11 @@ from azure.ai.projects.models import (
 )
 from azure.identity import DefaultAzureCredential
 
+import sys  # noqa: E402 - path setup for the sibling skills helper
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from skills_util import apply_skills  # noqa: E402
+
 AGENT_NAME = "hr-assistant"
 
 # Which prompt to register the agent with. Swap for any file in ./prompts.
@@ -45,11 +50,15 @@ def build_tools() -> list:
 
 
 def main() -> None:
-    instructions = load_instructions(PROMPT_FILE)
+    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+    credential = DefaultAzureCredential()
+    client = AIProjectClient(endpoint=endpoint, credential=credential)
 
-    client = AIProjectClient(
-        endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
-        credential=DefaultAzureCredential(),
+    instructions = apply_skills(
+        Path(__file__).parent,
+        load_instructions(PROMPT_FILE),
+        endpoint=endpoint,
+        credential=credential,
     )
 
     agent = client.agents.create_version(
