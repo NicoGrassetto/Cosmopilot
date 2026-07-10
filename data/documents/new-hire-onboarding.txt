@@ -1,0 +1,26 @@
+New Hire Onboarding Guide (INTERNAL)
+
+Welcome to Contoso! This guide covers your first two weeks.
+
+Week 1:
+- Day 1: Collect your laptop from IT, sign into Microsoft Entra ID, enable MFA.
+- Day 1: Complete the mandatory Security & Data Classification training.
+- Day 2: Meet your onboarding buddy and manager for a role overview.
+- Day 3-5: Set up your development environment using the Platform Handbook.
+
+Week 2:
+- Ship a small starter task to production with your buddy's help.
+- Complete HR benefits enrollment in the People portal.
+- Book your first 1:1 with your skip-level manager.
+
+Accounts & access:
+- Access requests go through the IT self-service portal and require manager
+  approval. Most requests are granted within one business day.
+
+Benefits enrollment deadline:
+You must enroll in health and retirement benefits within 30 days of your start
+date, or wait until the next annual enrollment window.
+
+Probation:
+The onboarding (probation) period is 90 days, after which remote-work eligibility
+begins.

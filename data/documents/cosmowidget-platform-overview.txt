@@ -1,0 +1,23 @@
+CosmoWidget Platform Overview (INTERNAL)
+
+CosmoWidget is Contoso's flagship SaaS platform for real-time tenant analytics,
+built on Azure Cosmos DB.
+
+Architecture:
+- Data store: Azure Cosmos DB (NoSQL API), Session consistency by default.
+- Partition key: /tenantId. Each customer is a logical tenant.
+- Default container throughput: 400 RU/s, autoscaled up to 4000 RU/s.
+
+Supported regions:
+East US 2, West Europe, UK South, and Sweden Central.
+
+Service tiers:
+- Starter: up to 5 million events/month, community support.
+- Business: up to 50 million events/month, 99.9% SLA, 24x5 support.
+- Enterprise: unlimited events, 99.99% SLA, 24x7 support, dedicated TAM.
+
+Data retention:
+Raw events are retained for 90 days; aggregated metrics are retained for 24
+months. Customers on the Enterprise tier can request custom retention.
+
+There is no free tier for production accounts.

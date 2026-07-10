@@ -40,11 +40,11 @@ Cosmopilot agents. Update the **Status** and **Where** columns as tools are adde
 | Azure AI Search | `azure_ai_search` | ✅ | `knowledge-assistant` |
 | Bing Grounding | `bing_grounding` | ✅ | `research-assistant` |
 | Bing Custom Search 🔬 | `bing_custom_search_preview` | ✅ | `research-assistant` |
-| SharePoint Grounding 🔬 | `sharepoint_grounding_preview` | ✅ | `knowledge-assistant` |
+| SharePoint Grounding 🔬 | `sharepoint_grounding_preview` | ⏸️ disabled | `knowledge-assistant` |
 | Fabric Data Agent 🔬 | `fabric_dataagent_preview` | ✅ | `insights-assistant` |
 | Fabric IQ 🔬 | `fabric_iq_preview` | ✅ | `insights-assistant` |
-| Work IQ 🔬 | `work_iq_preview` | ✅ | `knowledge-assistant` |
-| Memory Search 🔬 | `memory_search_preview` | ✅ | `knowledge-assistant` |
+| Work IQ 🔬 | `work_iq_preview` | ⏸️ disabled | `knowledge-assistant` |
+| Memory Search 🔬 | `memory_search_preview` | ⏸️ disabled | `knowledge-assistant` |
 | Web Search | `web_search` / `web_search_preview` | ✅ | `research-assistant` |
 
 ## Agents
@@ -53,7 +53,7 @@ Cosmopilot agents. Update the **Status** and **Where** columns as tools are adde
 |---|---|---|---|
 | hr-assistant | Prompt agent | `file_search`, `code_interpreter` | `src/agents/hr-agent/` |
 | research-assistant | Prompt agent | `web_search`, `bing_grounding`, `bing_custom_search_preview`, `file_search` | `src/agents/research-assistant/` |
-| knowledge-assistant | Prompt agent | `azure_ai_search`, `sharepoint_grounding_preview`, `work_iq_preview`, `memory_search_preview` | `src/agents/knowledge-assistant/` |
+| knowledge-assistant | Prompt agent | `azure_ai_search` (SharePoint, Work IQ, memory_search preview disabled) | `src/agents/knowledge-assistant/` |
 | insights-assistant | Prompt agent | `fabric_dataagent_preview`, `fabric_iq_preview`, `code_interpreter`, `capture_structured_outputs` | `src/agents/insights-assistant/` |
 | devops-assistant | Prompt agent | `local_shell`, `shell`, `apply_patch`, `azure_function` | `src/agents/devops-assistant/` |
 | integration-assistant | Prompt agent | `openapi`, `mcp`, `function`, `custom` | `src/agents/integration-assistant/` |
@@ -70,7 +70,7 @@ Cosmopilot agents. Update the **Status** and **Where** columns as tools are adde
 
 Every agent ships a local `skills/` directory. Each skill is a `SKILL.md` file
 (Agent Skills spec: YAML front matter + Markdown body) in its own subdirectory.
-At creation/startup each agent (via `src/agents/skills_util.py`):
+At creation/startup each agent (via skills helpers inlined in its own script):
 
 1. **Registers** the skills as versioned Foundry skills through the preview
    Skills API (`project.beta.skills`, `allow_preview=True`) — best-effort, so a
@@ -92,8 +92,8 @@ At creation/startup each agent (via `src/agents/skills_util.py`):
 
 > Skills registration needs the **Foundry User** role on the project and a
 > public endpoint (the Skills preview API doesn't support private networking).
-> `skills_util.py` is vendored into `deep-research-assistant/` so it is present
-> in that agent's Docker build context.
+> The skills helpers are inlined directly into each agent script, so every agent
+> is self-contained (no shared module to vendor into Docker build contexts).
 
 ---
 

@@ -1,0 +1,22 @@
+Security & Data Classification Standard (INTERNAL)
+
+Owner: Information Security. Classification levels apply to all Contoso data.
+
+Levels:
+- Public: may be shared externally (e.g., marketing material).
+- Internal: default for business data; share only inside Contoso.
+- Confidential: customer data, financials, source code. Access on need-to-know.
+- Restricted: secrets, credentials, personal data (PII). Strong controls.
+
+Handling rules:
+- Confidential and Restricted data must be encrypted at rest and in transit.
+- Never paste Restricted data into third-party tools or public chatbots.
+- Access to Confidential data requires manager approval and is reviewed quarterly.
+
+Passwords & secrets:
+- Store secrets in Azure Key Vault, never in source code or config files.
+- Rotate service credentials at least every 90 days.
+
+Incident reporting:
+Report suspected data exposure to security@contoso.example within 1 hour of
+discovery. Do not attempt to remediate customer-facing incidents alone.

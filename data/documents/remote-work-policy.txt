@@ -1,0 +1,26 @@
+Contoso Remote Work Policy (INTERNAL)
+
+Effective date: January 2026. Owner: People Operations.
+
+1. Eligibility
+All full-time employees who have completed their 90-day onboarding period are
+eligible for hybrid remote work. Contractors require manager approval.
+
+2. Core hours
+Employees must be reachable between 10:00 and 15:00 in their local time zone.
+Outside of core hours, schedules are flexible.
+
+3. In-office days
+Hybrid employees are expected on-site a minimum of two days per week, typically
+Tuesday and Thursday, to support team collaboration.
+
+4. Equipment
+Contoso provides a laptop and one external monitor. A home-office stipend of 500
+USD per year covers a desk, chair, or headset. Submit receipts through the
+Expenses portal within 60 days of purchase.
+
+5. Security
+Remote workers must use the company VPN when accessing internal systems and must
+keep full-disk encryption enabled. Never store customer data on personal devices.
+
+Questions: contact peopleops@contoso.example.

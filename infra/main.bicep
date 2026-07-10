@@ -49,6 +49,24 @@ param enableDataIsolation bool = false
 @description('Name for the Grounding with Bing Search account. Must be unique within the resource group.')
 param bingAccountName string = 'bing-grounding'
 
+// ===== Azure AI Search Parameters =====
+@description('Name for the Azure AI Search service. Must be globally unique, 2-60 chars, lowercase letters, digits, and hyphens (no leading/trailing hyphen).')
+param searchServiceName string = 'cosmopilot-search'
+
+@description('Azure AI Search SKU. Basic is a good default for a demo; free allows only one per subscription.')
+@allowed([
+  'free'
+  'basic'
+  'standard'
+])
+param searchServiceSku string = 'basic'
+
+@description('Name of the search index that the knowledge-assistant queries.')
+param searchIndexName string = 'knowledge-docs'
+
+@description('Region for the Azure AI Search service. Defaults to the main location; override if that region is out of Search capacity.')
+param searchLocation string = location
+
 // ===== Variables =====
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var projectFullName = '${projectName}-${uniqueSuffix}'
@@ -57,6 +75,8 @@ var modelDeploymentName = 'gpt-4-1-nano'
 var modelType = 'gpt-4.1-nano'
 var embeddingDeploymentName = 'text-embedding-ada-002'
 var embeddingModelType = 'text-embedding-ada-002'
+// Azure AI Search service name must be globally unique; append the suffix.
+var searchFullName = '${searchServiceName}-${uniqueSuffix}'
 
 // Additional Foundry model deployments (see docs/tools-roadmap.md).
 // model-router: single OpenAI deployment that routes to the best underlying model.
@@ -310,6 +330,58 @@ resource bingConnection 'Microsoft.CognitiveServices/accounts/projects/connectio
   }
 }
 
+// ===== Azure AI Search =====
+// Search service that backs the knowledge-assistant's azure_ai_search tool.
+resource searchService 'Microsoft.Search/searchServices@2024-06-01-preview' = {
+  name: searchFullName
+  location: searchLocation
+  sku: {
+    name: searchServiceSku
+  }
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    replicaCount: 1
+    partitionCount: 1
+    hostingMode: 'default'
+    publicNetworkAccess: 'enabled'
+    // Allow both API-key and Azure AD auth so the Foundry connection (key-based)
+    // and local provisioning (AAD) both work.
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http401WithBearerChallenge'
+      }
+    }
+  }
+  tags: {
+    environment: demoEnvironment
+  }
+}
+
+// Project-scoped connection exposing the search service to the Foundry project.
+// The knowledge-assistant references this connection id (SEARCH_CONNECTION_ID)
+// when attaching its azure_ai_search tool to an index.
+resource searchConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview' = {
+  parent: foundryProject
+  name: 'aisearch'
+  properties: {
+    category: 'CognitiveSearch'
+    target: 'https://${searchService.name}.search.windows.net'
+    authType: 'ApiKey'
+    isSharedToAll: true
+    credentials: {
+      key: listAdminKeys(searchService.id, '2024-06-01-preview').primaryKey
+    }
+    metadata: {
+      Type: 'azure_ai_search'
+      ApiType: 'Azure'
+      ResourceId: searchService.id
+      ApiVersion: '2024-07-01'
+    }
+  }
+}
+
 // ===== Outputs =====
 // Cosmos DB outputs
 output cosmosAccountName string = cosmosAccount.name
@@ -345,3 +417,10 @@ output phiMiniReasoningModelType string = phiMiniReasoningModelType
 output bingAccountName string = bingAccount.name
 output bingConnectionName string = bingConnection.name
 output bingConnectionId string = bingConnection.id
+
+// Azure AI Search outputs (used to provision the index and register the knowledge-assistant)
+output searchServiceName string = searchService.name
+output searchServiceEndpoint string = 'https://${searchService.name}.search.windows.net'
+output searchConnectionName string = searchConnection.name
+output searchConnectionId string = searchConnection.id
+output searchIndexName string = searchIndexName

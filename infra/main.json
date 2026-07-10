@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.5.1644",
-      "templateHash": "14372191964634864565"
+      "templateHash": "9317765436813214613"
     }
   },
   "parameters": {
@@ -96,6 +96,39 @@
       "metadata": {
         "description": "Name for the Grounding with Bing Search account. Must be unique within the resource group."
       }
+    },
+    "searchServiceName": {
+      "type": "string",
+      "defaultValue": "cosmopilot-search",
+      "metadata": {
+        "description": "Name for the Azure AI Search service. Must be globally unique, 2-60 chars, lowercase letters, digits, and hyphens (no leading/trailing hyphen)."
+      }
+    },
+    "searchServiceSku": {
+      "type": "string",
+      "defaultValue": "basic",
+      "allowedValues": [
+        "free",
+        "basic",
+        "standard"
+      ],
+      "metadata": {
+        "description": "Azure AI Search SKU. Basic is a good default for a demo; free allows only one per subscription."
+      }
+    },
+    "searchIndexName": {
+      "type": "string",
+      "defaultValue": "knowledge-docs",
+      "metadata": {
+        "description": "Name of the search index that the knowledge-assistant queries."
+      }
+    },
+    "searchLocation": {
+      "type": "string",
+      "defaultValue": "[parameters('location')]",
+      "metadata": {
+        "description": "Region for the Azure AI Search service. Defaults to the main location; override if that region is out of Search capacity."
+      }
     }
   },
   "variables": {
@@ -106,6 +139,7 @@
     "modelType": "gpt-4.1-nano",
     "embeddingDeploymentName": "text-embedding-ada-002",
     "embeddingModelType": "text-embedding-ada-002",
+    "searchFullName": "[format('{0}-{1}', parameters('searchServiceName'), variables('uniqueSuffix'))]",
     "modelRouterDeploymentName": "model-router",
     "modelRouterModelType": "model-router",
     "modelRouterModelVersion": "2025-11-18",
@@ -360,6 +394,56 @@
         "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
       ]
+    },
+    {
+      "type": "Microsoft.Search/searchServices",
+      "apiVersion": "2024-06-01-preview",
+      "name": "[variables('searchFullName')]",
+      "location": "[parameters('searchLocation')]",
+      "sku": {
+        "name": "[parameters('searchServiceSku')]"
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "replicaCount": 1,
+        "partitionCount": 1,
+        "hostingMode": "default",
+        "publicNetworkAccess": "enabled",
+        "authOptions": {
+          "aadOrApiKey": {
+            "aadAuthFailureMode": "http401WithBearerChallenge"
+          }
+        }
+      },
+      "tags": {
+        "environment": "[variables('demoEnvironment')]"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'aisearch')]",
+      "properties": {
+        "category": "CognitiveSearch",
+        "target": "[format('https://{0}.search.windows.net', variables('searchFullName'))]",
+        "authType": "ApiKey",
+        "isSharedToAll": true,
+        "credentials": {
+          "key": "[listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('searchFullName')), '2024-06-01-preview').primaryKey]"
+        },
+        "metadata": {
+          "Type": "azure_ai_search",
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Search/searchServices', variables('searchFullName'))]",
+          "ApiVersion": "2024-07-01"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]",
+        "[resourceId('Microsoft.Search/searchServices', variables('searchFullName'))]"
+      ]
     }
   ],
   "outputs": {
@@ -470,6 +554,26 @@
     "bingConnectionId": {
       "type": "string",
       "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]"
+    },
+    "searchServiceName": {
+      "type": "string",
+      "value": "[variables('searchFullName')]"
+    },
+    "searchServiceEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.search.windows.net', variables('searchFullName'))]"
+    },
+    "searchConnectionName": {
+      "type": "string",
+      "value": "aisearch"
+    },
+    "searchConnectionId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'aisearch')]"
+    },
+    "searchIndexName": {
+      "type": "string",
+      "value": "[parameters('searchIndexName')]"
     }
   }
 }

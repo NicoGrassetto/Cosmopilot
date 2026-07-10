@@ -1,0 +1,25 @@
+Contoso Travel & Expense Policy (INTERNAL)
+
+Owner: Finance. Last reviewed: March 2026.
+
+Daily meal allowance:
+- Domestic travel: 75 USD per day.
+- International travel: 90 USD per day.
+
+Air travel:
+- Economy class is standard for flights under 6 hours.
+- Business class is permitted for flights of 6 hours or longer with director
+  approval.
+
+Hotels:
+- Reimbursed up to 250 USD per night in Tier 1 cities (New York, London, Tokyo),
+  180 USD elsewhere.
+
+Submission:
+- Submit expense reports within 30 days of trip completion.
+- Receipts are required for any single expense above 25 USD.
+- Reports are approved by your direct manager, then processed by Finance within
+  10 business days.
+
+Non-reimbursable: personal entertainment, minibar, traffic fines, and airline
+seat upgrades purchased without approval.

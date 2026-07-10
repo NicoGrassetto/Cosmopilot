@@ -1,0 +1,25 @@
+Engineering On-Call Runbook: CosmoWidget (INTERNAL)
+
+Audience: Platform on-call engineers.
+
+Common alerts:
+
+1. HTTP 429 (Request Units throttled)
+   - Cause: container throughput exceeded.
+   - Action: raise container throughput above 400 RU/s; confirm autoscale is on.
+   - A single hot /tenantId partition usually indicates a skewed tenant.
+
+2. Elevated P99 read latency
+   - Check the Cosmos DB metrics blade for the affected region.
+   - If a region is degraded, initiate manual failover to a healthy region.
+
+3. Ingestion pipeline lag
+   - Inspect the Event Hub consumer group offset.
+   - Restart the stateless ingestion workers before paging the data team.
+
+Escalation:
+- Page the platform team if there is no recovery within 15 minutes.
+- For customer-facing outages, open a Sev-1 and notify the incident commander.
+
+Post-incident:
+Write a blameless postmortem within 3 business days and file follow-up actions.
