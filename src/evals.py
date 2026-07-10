@@ -1,12 +1,11 @@
 """Evaluation logic for Cosmopilot.
 
-Two distinct concerns live here:
+Two functions:
 
-* ``register_evals`` — creates (registers) reusable, OpenAI-graded evals in the
-  Foundry project via ``openai_client.evals.create``. These are persistent eval
-  objects that ``tests/run_eval.py`` can later look up by name and run.
-* ``run_builtin_evaluations`` — one-shot runs of the ready-made ``azure-ai-evaluation``
-  built-in evaluators over a JSONL dataset via ``evaluate``.
+* ``run`` — runs the whole evaluation suite: registers the reusable OpenAI-graded
+  evals in the Foundry project, then runs every ready-made ``azure-ai-evaluation``
+  built-in evaluator (quality, safety, and agent) over the dataset.
+* ``upload_dataset`` — registers (uploads) the eval dataset in the Foundry project.
 """
 
 import csv
@@ -87,8 +86,19 @@ TEXT_SIMILARITY_METRICS = [
 ]
 
 
-def register_evals(openai_client, model):
-    """Create (register) the reusable OpenAI-graded evals in the Foundry project."""
+def run():
+    """Run the whole evaluation suite (registers evals, then runs all evaluators)."""
+    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+    model = os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini")
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+
+    credential = DefaultAzureCredential()
+    client = AIProjectClient(endpoint=endpoint, credential=credential)
+    openai_client = client.get_openai_client()
+
+    # -----------------------------------------------------------------------
+    # Register (create) the reusable OpenAI-graded evals in the Foundry project.
+    # -----------------------------------------------------------------------
     openai_client.evals.create(
         name=f"{PREFIX}-relevant",
         data_source_config=custom_data_source_config,
@@ -175,13 +185,29 @@ def register_evals(openai_client, model):
         ],
     )
 
+    # -----------------------------------------------------------------------
+    # Built-in azure-ai-evaluation evaluators (run over a JSONL dataset).
+    #
+    # AI-assisted evaluators need a judge model (evaluator_model_config); safety
+    # evaluators call the Azure AI Content Safety service and need the project +
+    # a credential instead.
+    #
+    # NOTE: These built-in evaluators are portal/preview-only and are NOT exposed
+    # as importable classes in the azure-ai-evaluation SDK (v1.18), so they can't
+    # be constructed here — configure them from the Foundry portal instead:
+    #   Rubric, Task Completion, Customer Satisfaction, Task Navigation Efficiency,
+    #   Tool Selection, Tool Input Accuracy, Tool Output Utilization,
+    #   Tool Call Success, Quality Grader, Prohibited Actions, Sensitive Data Leakage.
+    # -----------------------------------------------------------------------
+    evaluator_model_config = {
+        "azure_endpoint": endpoint,
+        "azure_deployment": model,
+        "api_version": os.environ.get("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"),
+    }
+    azure_ai_project = endpoint
 
-def _build_quality_evaluators(evaluator_model_config, credential, azure_ai_project):
-    """Quality / textual-similarity / RAG evaluators.
-
-    Compatible dataset fields: query, response, context, ground_truth.
-    """
-    return {
+    # Quality / textual-similarity / RAG. Fields: query, response, context, ground_truth.
+    quality_evaluators = {
         "coherence": CoherenceEvaluator(evaluator_model_config),
         "fluency": FluencyEvaluator(evaluator_model_config),
         "similarity": SimilarityEvaluator(evaluator_model_config),
@@ -200,13 +226,8 @@ def _build_quality_evaluators(evaluator_model_config, credential, azure_ai_proje
         "document_retrieval": DocumentRetrievalEvaluator(),
     }
 
-
-def _build_safety_evaluators(credential, azure_ai_project):
-    """Risk and safety evaluators.
-
-    Compatible dataset fields: query, response (content is sent to Content Safety).
-    """
-    return {
+    # Risk and safety. Fields: query, response (content is sent to Content Safety).
+    safety_evaluators = {
         "content_safety": ContentSafetyEvaluator(credential, azure_ai_project),
         "hate_unfairness": HateUnfairnessEvaluator(credential, azure_ai_project),
         "sexual": SexualEvaluator(credential, azure_ai_project),
@@ -218,28 +239,17 @@ def _build_safety_evaluators(credential, azure_ai_project):
         "ungrounded_attributes": UngroundedAttributesEvaluator(credential, azure_ai_project),
     }
 
-
-def _build_agent_evaluators(evaluator_model_config):
-    """Agent evaluators.
-
-    Require a dataset with agent traces: tool_calls + tool_definitions in addition
-    to query/response. Run against an agent-run dataset, not the simple Q&A CSV.
-    """
-    return {
+    # Agent. Require agent traces: tool_calls + tool_definitions plus query/response.
+    agent_evaluators = {
         "intent_resolution": IntentResolutionEvaluator(evaluator_model_config),
         "task_adherence": TaskAdherenceEvaluator(evaluator_model_config),
         "tool_call_accuracy": ToolCallAccuracyEvaluator(evaluator_model_config),
     }
 
-
-def _prepare_dataset(data_dir):
-    """Convert the Q&A CSV into the JSONL layout ``evaluate`` expects.
-
-    Returns the path to the generated JSONL file (query/response/context/ground_truth).
-    """
+    # evaluate() expects a JSONL file with query/response/context/ground_truth
+    # fields, so convert the CSV dataset into that layout first.
     dataset_csv = os.path.join(data_dir, "eval_dataset.csv")
     dataset_jsonl = os.path.join(data_dir, "eval_dataset.jsonl")
-
     with open(dataset_csv, newline="") as _src, open(dataset_jsonl, "w") as _dst:
         for _row in csv.DictReader(_src):
             _dst.write(
@@ -255,37 +265,6 @@ def _prepare_dataset(data_dir):
                 )
                 + "\n"
             )
-
-    return dataset_jsonl
-
-
-def run_builtin_evaluations(credential, model, endpoint, data_dir):
-    """Run the ready-made ``azure-ai-evaluation`` built-in evaluators over the dataset."""
-    # AI-assisted evaluators need a judge model (evaluator_model_config).
-    evaluator_model_config = {
-        "azure_endpoint": endpoint,
-        "azure_deployment": model,
-        "api_version": os.environ.get("AZURE_OPENAI_API_VERSION", "2024-08-01-preview"),
-    }
-
-    # Safety evaluators call the Azure AI Content Safety service and need the
-    # project + a credential instead of a judge-model config.
-    azure_ai_project = endpoint
-
-    # NOTE: The following built-in evaluators are portal/preview-only and are NOT
-    # exposed as importable classes in the azure-ai-evaluation SDK (v1.18), so they
-    # can't be constructed here. Configure them from the Foundry portal instead:
-    #   Rubric, Task Completion, Customer Satisfaction, Task Navigation Efficiency,
-    #   Tool Selection, Tool Input Accuracy, Tool Output Utilization,
-    #   Tool Call Success, Quality Grader, Prohibited Actions, Sensitive Data Leakage.
-
-    quality_evaluators = _build_quality_evaluators(
-        evaluator_model_config, credential, azure_ai_project
-    )
-    safety_evaluators = _build_safety_evaluators(credential, azure_ai_project)
-    agent_evaluators = _build_agent_evaluators(evaluator_model_config)
-
-    dataset_jsonl = _prepare_dataset(data_dir)
 
     # Each run uses only evaluators compatible with the dataset it points at.
     # All evaluators in a single evaluate() call must accept the same input fields.
@@ -312,29 +291,34 @@ def run_builtin_evaluations(credential, model, endpoint, data_dir):
         )
 
 
-def build_clients():
-    """Build the Foundry clients and resolve config from the environment.
-
-    Returns ``(client, openai_client, credential, model, endpoint, data_dir)``.
-    """
-    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
-    model = os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini")
-    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
-
-    credential = DefaultAzureCredential()
-    client = AIProjectClient(endpoint=endpoint, credential=credential)
-    openai_client = client.get_openai_client()
-
-    return client, openai_client, credential, model, endpoint, data_dir
-
-
-def upload_dataset(client, data_dir, name=DATASET_NAME, version=DATASET_VERSION):
-    """Upload the eval dataset to the Foundry project.
+def upload_dataset(name=DATASET_NAME, version=DATASET_VERSION):
+    """Register (upload) the eval dataset in the Foundry project.
 
     Converts the Q&A CSV into the JSONL layout, uploads it as a Foundry dataset,
     and returns the resulting dataset version (which carries an ``id``).
     """
-    dataset_jsonl = _prepare_dataset(data_dir)
+    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+
+    credential = DefaultAzureCredential()
+    client = AIProjectClient(endpoint=endpoint, credential=credential)
+
+    dataset_csv = os.path.join(data_dir, "eval_dataset.csv")
+    dataset_jsonl = os.path.join(data_dir, "eval_dataset.jsonl")
+    with open(dataset_csv, newline="") as _src, open(dataset_jsonl, "w") as _dst:
+        for _row in csv.DictReader(_src):
+            _dst.write(
+                json.dumps(
+                    {
+                        "query": _row["question"],
+                        "response": _row["answer"],
+                        "ground_truth": _row["answer"],
+                        "context": _row["answer"],
+                    }
+                )
+                + "\n"
+            )
+
     dataset = client.datasets.upload_file(
         name=name,
         version=version,
@@ -344,30 +328,17 @@ def upload_dataset(client, data_dir, name=DATASET_NAME, version=DATASET_VERSION)
     return dataset
 
 
-def run_full_suite(openai_client, credential, model, endpoint, data_dir):
-    """Run the full evaluation suite.
-
-    Registers the reusable OpenAI-graded evals in the Foundry project, then runs
-    the ready-made ``azure-ai-evaluation`` built-in evaluators over the dataset.
-    """
-    register_evals(openai_client, model)
-    run_builtin_evaluations(credential, model, endpoint, data_dir)
-
-
 if __name__ == "__main__":
     import sys
 
     command = sys.argv[1] if len(sys.argv) > 1 else "run"
-    client, openai_client, credential, model, endpoint, data_dir = build_clients()
 
     if command == "upload":
-        upload_dataset(client, data_dir)
+        upload_dataset()
     elif command == "run":
-        run_full_suite(openai_client, credential, model, endpoint, data_dir)
+        run()
     elif command == "all":
-        upload_dataset(client, data_dir)
-        run_full_suite(openai_client, credential, model, endpoint, data_dir)
+        upload_dataset()
+        run()
     else:
-        raise SystemExit(
-            f"Unknown command {command!r}. Use one of: upload | run | all"
-        )
+        raise SystemExit(f"Unknown command {command!r}. Use one of: upload | run | all")
