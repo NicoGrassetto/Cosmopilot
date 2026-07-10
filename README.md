@@ -39,6 +39,7 @@ Cosmopilot/
 ├── frontend/               # Lightweight Svelte frontend
 ├── infra/                  # Bicep templates and deployment scripts
 ├── data/                   # Sample documents and evaluation datasets
+│   ├── datasets/           # Evaluation datasets (uploaded to Foundry)
 │   └── documents/          # Fake docs indexed into Azure AI Search
 ├── docs/                   # Tool catalog, evaluations, and roadmaps
 ├── notebooks/              # Exploratory notebooks

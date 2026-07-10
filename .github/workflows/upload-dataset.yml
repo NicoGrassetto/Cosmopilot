@@ -8,8 +8,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "data/eval_dataset.csv"
-      - "data/eval_dataset.jsonl"
+      - "data/datasets/**"
   workflow_dispatch: {}
 
 permissions:

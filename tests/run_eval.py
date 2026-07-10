@@ -18,7 +18,7 @@ from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 
 EVAL_NAME = "cosmopilot-text_similarity"
-DATASET_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "eval_dataset.csv")
+DATASET_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "datasets", "eval_dataset.csv")
 
 
 def load_items():

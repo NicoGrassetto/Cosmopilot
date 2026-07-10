@@ -92,7 +92,7 @@ def run():
     """Run the whole evaluation suite (registers evals, then runs all evaluators)."""
     endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
     model = os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini")
-    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data", "datasets")
 
     credential = DefaultAzureCredential()
     client = AIProjectClient(endpoint=endpoint, credential=credential)
@@ -300,7 +300,7 @@ def upload_dataset(name=DATASET_NAME, version=DATASET_VERSION):
     and returns the resulting dataset version (which carries an ``id``).
     """
     endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
-    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data", "datasets")
 
     credential = DefaultAzureCredential()
     client = AIProjectClient(endpoint=endpoint, credential=credential)
