@@ -43,8 +43,13 @@ from azure.ai.evaluation import (
     ViolenceEvaluator,
     evaluate,
 )
+from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential
 
 PREFIX = "cosmopilot"
+
+DATASET_NAME = f"{PREFIX}-eval-dataset"
+DATASET_VERSION = "1"
 
 custom_data_source_config = {
     "type": "custom",
@@ -304,4 +309,65 @@ def run_builtin_evaluations(credential, model, endpoint, data_dir):
             data=agent_dataset_jsonl,
             evaluators=agent_evaluators,
             azure_ai_project=azure_ai_project,
+        )
+
+
+def build_clients():
+    """Build the Foundry clients and resolve config from the environment.
+
+    Returns ``(client, openai_client, credential, model, endpoint, data_dir)``.
+    """
+    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+    model = os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini")
+    data_dir = os.path.join(os.path.dirname(__file__), "..", "data")
+
+    credential = DefaultAzureCredential()
+    client = AIProjectClient(endpoint=endpoint, credential=credential)
+    openai_client = client.get_openai_client()
+
+    return client, openai_client, credential, model, endpoint, data_dir
+
+
+def upload_dataset(client, data_dir, name=DATASET_NAME, version=DATASET_VERSION):
+    """Upload the eval dataset to the Foundry project.
+
+    Converts the Q&A CSV into the JSONL layout, uploads it as a Foundry dataset,
+    and returns the resulting dataset version (which carries an ``id``).
+    """
+    dataset_jsonl = _prepare_dataset(data_dir)
+    dataset = client.datasets.upload_file(
+        name=name,
+        version=version,
+        file_path=dataset_jsonl,
+    )
+    print(f"Uploaded dataset {name}:{version} -> {dataset.id}")
+    return dataset
+
+
+def run_full_suite(openai_client, credential, model, endpoint, data_dir):
+    """Run the full evaluation suite.
+
+    Registers the reusable OpenAI-graded evals in the Foundry project, then runs
+    the ready-made ``azure-ai-evaluation`` built-in evaluators over the dataset.
+    """
+    register_evals(openai_client, model)
+    run_builtin_evaluations(credential, model, endpoint, data_dir)
+
+
+if __name__ == "__main__":
+    import sys
+
+    command = sys.argv[1] if len(sys.argv) > 1 else "run"
+    client, openai_client, credential, model, endpoint, data_dir = build_clients()
+
+    if command == "upload":
+        upload_dataset(client, data_dir)
+    elif command == "run":
+        run_full_suite(openai_client, credential, model, endpoint, data_dir)
+    elif command == "all":
+        upload_dataset(client, data_dir)
+        run_full_suite(openai_client, credential, model, endpoint, data_dir)
+    else:
+        raise SystemExit(
+            f"Unknown command {command!r}. Use one of: upload | run | all"
         )
