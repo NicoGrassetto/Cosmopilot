@@ -1,4 +1,4 @@
-<h1 align="center">🤖 Cosmopilot</h1>
+<h1 align="center"> Cosmopilot</h1>
 
 <p align="center">
   <img src="assets/banner.png" alt="Cosmopilot Banner" width="60%" />
