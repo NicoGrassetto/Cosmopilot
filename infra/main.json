@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.37.4.10188",
-      "templateHash": "7442369819815293720"
+      "version": "0.38.5.1644",
+      "templateHash": "14372191964634864565"
     }
   },
   "parameters": {
@@ -18,14 +18,10 @@
     "location": {
       "type": "string",
       "allowedValues": [
-        "eastus",
-        "eastus2",
-        "westeurope",
-        "uksouth",
-        "swedencentral"
+        "eastus2"
       ],
       "metadata": {
-        "description": "The Azure region where resources will be deployed."
+        "description": "The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only)."
       }
     },
     "cosmosAccountName": {
@@ -93,6 +89,13 @@
       "metadata": {
         "description": "Enable data isolation for the project"
       }
+    },
+    "bingAccountName": {
+      "type": "string",
+      "defaultValue": "bing-grounding",
+      "metadata": {
+        "description": "Name for the Grounding with Bing Search account. Must be unique within the resource group."
+      }
     }
   },
   "variables": {
@@ -102,7 +105,16 @@
     "modelDeploymentName": "gpt-4-1-nano",
     "modelType": "gpt-4.1-nano",
     "embeddingDeploymentName": "text-embedding-ada-002",
-    "embeddingModelType": "text-embedding-ada-002"
+    "embeddingModelType": "text-embedding-ada-002",
+    "modelRouterDeploymentName": "model-router",
+    "modelRouterModelType": "model-router",
+    "modelRouterModelVersion": "2025-11-18",
+    "gpt41DeploymentName": "gpt-4.1",
+    "gpt41ModelType": "gpt-4.1",
+    "gpt41ModelVersion": "2025-04-14",
+    "phiMiniReasoningDeploymentName": "Phi-4-mini-reasoning",
+    "phiMiniReasoningModelType": "Phi-4-mini-reasoning",
+    "phiMiniReasoningModelVersion": "1"
   },
   "resources": [
     {
@@ -220,7 +232,7 @@
       "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelDeploymentName'))]",
       "sku": {
         "name": "GlobalStandard",
-        "capacity": 1
+        "capacity": 50
       },
       "properties": {
         "model": {
@@ -250,6 +262,103 @@
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelRouterDeploymentName'))]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 50
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('modelRouterModelType')]",
+          "version": "[variables('modelRouterModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('embeddingDeploymentName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('gpt41DeploymentName'))]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 50
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('gpt41ModelType')]",
+          "version": "[variables('gpt41ModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelRouterDeploymentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 1
+      },
+      "properties": {
+        "model": {
+          "format": "Microsoft",
+          "name": "[variables('phiMiniReasoningModelType')]",
+          "version": "[variables('phiMiniReasoningModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Bing/accounts",
+      "apiVersion": "2025-05-01-preview",
+      "name": "[parameters('bingAccountName')]",
+      "location": "global",
+      "kind": "Bing.Grounding",
+      "sku": {
+        "name": "G1"
+      },
+      "tags": {
+        "environment": "[variables('demoEnvironment')]"
+      },
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+      "apiVersion": "2025-04-01-preview",
+      "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]",
+      "properties": {
+        "category": "GroundingWithBingSearch",
+        "target": "https://api.bing.microsoft.com/",
+        "authType": "ApiKey",
+        "isSharedToAll": true,
+        "credentials": {
+          "key": "[listKeys(resourceId('Microsoft.Bing/accounts', parameters('bingAccountName')), '2025-05-01-preview').key1]"
+        },
+        "metadata": {
+          "Type": "bing_grounding",
+          "ApiType": "Azure",
+          "ResourceId": "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
       ]
     }
   ],
@@ -286,6 +395,10 @@
       "type": "string",
       "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
     },
+    "foundryProjectEndpoint": {
+      "type": "string",
+      "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', variables('projectFullName'), variables('projectFullName'))]"
+    },
     "modelDeploymentName": {
       "type": "string",
       "value": "[variables('modelDeploymentName')]"
@@ -309,6 +422,54 @@
     "embeddingModelType": {
       "type": "string",
       "value": "[variables('embeddingModelType')]"
+    },
+    "modelRouterDeploymentName": {
+      "type": "string",
+      "value": "[variables('modelRouterDeploymentName')]"
+    },
+    "modelRouterDeploymentId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelRouterDeploymentName'))]"
+    },
+    "modelRouterModelType": {
+      "type": "string",
+      "value": "[variables('modelRouterModelType')]"
+    },
+    "gpt41DeploymentName": {
+      "type": "string",
+      "value": "[variables('gpt41DeploymentName')]"
+    },
+    "gpt41DeploymentId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
+    },
+    "gpt41ModelType": {
+      "type": "string",
+      "value": "[variables('gpt41ModelType')]"
+    },
+    "phiMiniReasoningDeploymentName": {
+      "type": "string",
+      "value": "[variables('phiMiniReasoningDeploymentName')]"
+    },
+    "phiMiniReasoningDeploymentId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]"
+    },
+    "phiMiniReasoningModelType": {
+      "type": "string",
+      "value": "[variables('phiMiniReasoningModelType')]"
+    },
+    "bingAccountName": {
+      "type": "string",
+      "value": "[parameters('bingAccountName')]"
+    },
+    "bingConnectionName": {
+      "type": "string",
+      "value": "binggrounding"
+    },
+    "bingConnectionId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]"
     }
   }
 }

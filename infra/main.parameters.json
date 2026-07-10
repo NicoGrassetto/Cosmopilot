@@ -6,7 +6,7 @@
       "value": "demo"
     },
     "location": {
-      "value": "swedencentral"
+      "value": "eastus2"
     },
     "cosmosAccountName": {
       "value": "cosmopilot-db"
