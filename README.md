@@ -4,7 +4,7 @@
   <img src="assets/banner.png" alt="Cosmopilot Banner" width="60%" />
 </p>
 
-<p align="center">A multi-agent AI assistant powered by Microsoft Foundry and Azure Cosmos DB.</p>
+<p align="center">A demo of the beautiful things we can achieve when we combine all of what Microsoft Foundry has to offer.</p>
 
 <p align="center">
   <a href="LICENSE"><img alt="Open Source" src="https://img.shields.io/badge/Open%20Source-%E2%9D%A4-2ea44f" /></a>
@@ -13,7 +13,7 @@
   <a href="https://github.com/NicoGrassetto/Cosmopilot"><img alt="GitHub stars" src="https://img.shields.io/github/stars/NicoGrassetto/Cosmopilot" /></a>
 </p>
 
-Cosmopilot is a demo showcasing Microsoft Foundry as an AI agent platform, combined with Azure Cosmos DB as a unified database for storing vectors, conversation history, and operational data. It pairs a fleet of specialized Foundry agents with real-time data feeds and a lightweight Svelte frontend, kept in sync through Cosmos DB change feeds.
+Cosmopilot is a demo showcasing Microsoft Foundry as your AI platform choice. This repo aims at covering every feature Microsoft Foundry offers (GA and Preview) in a somewhat standardised repo structure drawn from what I've observed at my customers and through the Microsoft documentation and OS IP. This does not reflect in any shape of form what YOU should be doing but merely shows you how Microsoft and other folks organise these things.
 
 > [!WARNING]
 > This project is simply a demo of Microsoft Foundry capabilities and is intended solely for exploration and validation purposes. 
