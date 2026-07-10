@@ -15,6 +15,38 @@
 
 Cosmopilot is a demo showcasing Microsoft Foundry as an AI agent platform, combined with Azure Cosmos DB as a unified database for storing vectors, conversation history, and operational data. It pairs a fleet of specialized Foundry agents with real-time data feeds and a lightweight Svelte frontend, kept in sync through Cosmos DB change feeds.
 
+> [!WARNING]
+> This project is simply a demo of Microsoft Foundry capabilities and is intended solely for exploration and validation purposes. It is not production-ready and should not be used to handle real or sensitive data.
+
+---
+
+## Project Structure
+
+```text
+Cosmopilot/
+├── src/                    # Application code
+│   ├── agents/             # Microsoft Foundry agents (one folder per agent)
+│   │   ├── browser-assistant/
+│   │   ├── deep-research-assistant/
+│   │   ├── devops-assistant/
+│   │   ├── hr-agent/
+│   │   ├── insights-assistant/
+│   │   ├── integration-assistant/
+│   │   ├── knowledge-assistant/
+│   │   ├── orchestrator-assistant/
+│   │   └── research-assistant/
+│   └── main.py             # Entry point
+├── frontend/               # Lightweight Svelte frontend
+├── infra/                  # Bicep templates and deployment scripts
+├── data/                   # Sample documents and evaluation datasets
+│   └── documents/          # Fake docs indexed into Azure AI Search
+├── docs/                   # Tool catalog, evaluations, and roadmaps
+├── notebooks/              # Exploratory notebooks
+├── tests/                  # Evaluation runner and tests
+├── assets/                 # Images used in docs
+└── requirements.txt        # Python dependencies
+```
+
 ---
 
 ## License
