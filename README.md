@@ -50,6 +50,24 @@ Cosmopilot/
 
 ---
 
+## Roadmap
+
+Foundry moves fast. These are capabilities I plan to fold into Cosmopilot next to keep it a living tour of the platform (GA and Preview):
+
+- **Serverless agents runtime (Azure Functions)** — a markdown-first programming model for building event-driven AI agents as a first-class Azure Functions workload, with triggers (HTTP, timer, queue, Cosmos DB, Teams, Outlook, …), MCP tools/connectors, sandboxed execution, and scale-to-zero Flex Consumption hosting. An agent is a single `.agent.md` file plus a trigger.
+  - Announcement: [Introducing the Azure Functions serverless agents runtime (preview)](https://techcommunity.microsoft.com/blog/appsonazureblog/introducing-the-azure-functions-serverless-agents-runtime-preview/4523804)
+  - Serverless Agent Framework: [serverless-agent-framework](https://serverless-agent-framework-guaxabfdfvh7ekdh.eastus-01.azurewebsites.net/saf)
+  - Docs: [Serverless agents runtime in Azure Functions](https://learn.microsoft.com/en-us/azure/azure-functions/functions-serverless-agents-runtime)
+
+- **Workflows** — orchestrate complex, multi-step or multi-agent processes with branching, parallel execution, and human-in-the-loop approvals, going beyond a single trigger-and-action.
+  - Docs: [Workflows in the Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/overview)
+  - Repo: [microsoft/agent-framework](https://github.com/microsoft/agent-framework)
+
+- **Routines** — simple, project-native automation that triggers an agent on a timer or recurring (CRON) schedule for things like daily summaries and periodic checks, all managed inside the Foundry project.
+  - Docs: [Automate agents with routines (preview)](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/routines)
+
+---
+
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
