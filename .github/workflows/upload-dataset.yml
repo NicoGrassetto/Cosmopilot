@@ -1,0 +1,47 @@
+name: Upload eval dataset to Foundry
+
+# Re-registers the evaluation dataset in the Foundry project whenever the
+# dataset changes on main. Dataset versions in Foundry are immutable, so each
+# run stamps a new version with the commit SHA (see DATASET_VERSION below).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/eval_dataset.csv"
+      - "data/eval_dataset.jsonl"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write   # required for Azure OIDC login
+  contents: read
+
+jobs:
+  upload-dataset:
+    runs-on: ubuntu-latest
+    env:
+      AZURE_AI_PROJECT_ENDPOINT: ${{ vars.AZURE_AI_PROJECT_ENDPOINT }}
+      # Immutable, unique dataset version per commit so re-uploads never collide.
+      DATASET_VERSION: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload dataset to Foundry
+        run: python src/evals.py upload

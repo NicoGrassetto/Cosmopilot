@@ -48,7 +48,9 @@ from azure.identity import DefaultAzureCredential
 PREFIX = "cosmopilot"
 
 DATASET_NAME = f"{PREFIX}-eval-dataset"
-DATASET_VERSION = "1"
+# Dataset versions in Foundry are immutable, so CI overrides this per change
+# (e.g. with the commit SHA) to avoid version collisions on re-upload.
+DATASET_VERSION = os.environ.get("DATASET_VERSION", "1")
 
 custom_data_source_config = {
     "type": "custom",
