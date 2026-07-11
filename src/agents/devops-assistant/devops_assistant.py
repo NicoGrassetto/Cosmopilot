@@ -1,13 +1,18 @@
 """Create the devops-assistant prompt agent in Azure AI Foundry.
 
-Tools: local_shell, shell, apply_patch, azure_function.
+Tools: shell, apply_patch (Codex-family — require a Codex model such as
+gpt-5.3-codex; verified working there).
+(local_shell is deprecated and removed from the Responses API; azure_function
+is currently
+disabled — see build_tools.)
 
 Env vars:
     AZURE_AI_PROJECT_ENDPOINT   Foundry project endpoint
-    AZURE_DEPLOYMENT_NAME       Chat model deployment (e.g. gpt-4-1-nano)
+    AZURE_DEPLOYMENT_NAME       Chat model deployment (must be a Codex model,
+                                e.g. gpt-5-3-codex, for shell/apply_patch)
 
 Auth: DefaultAzureCredential (run `az login` first).
-Note: azure_function requires a configured Azure Function binding.
+Note: azure_function (disabled) requires a configured Azure Function binding.
 """
 
 from __future__ import annotations
@@ -18,10 +23,12 @@ from pathlib import Path
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import (
     ApplyPatchToolParam,
-    AzureFunctionTool,
+    # azure_function disabled for now (see build_tools).
+    # AzureFunctionTool,
     FunctionShellToolParam,
     FunctionShellToolParamEnvironmentLocalEnvironmentParam,
-    LocalShellToolParam,
+    # local_shell is deprecated (removed from the Responses API) — see build_tools.
+    # LocalShellToolParam,
     PromptAgentDefinition,
 )
 from azure.identity import DefaultAzureCredential
@@ -196,13 +203,20 @@ PROMPT_FILE = Path(__file__).parent / "prompts" / "devops.txt"
 
 def build_tools() -> list:
     return [
-        LocalShellToolParam(),
+        # local_shell is deprecated: the Responses API rejects it for every model
+        # with "The local_shell tool is no longer supported." Use shell instead.
+        # LocalShellToolParam(),
+        # shell + apply_patch are Codex-family tools: they require a Codex model
+        # such as gpt-5.3-codex (verified). Older gpt-5-codex and the non-Codex
+        # models (gpt-4.1, gpt-4.1-nano, model-router, Phi-4-mini-reasoning) all
+        # reject them. The deprecated "name" field must be omitted from shell.
         FunctionShellToolParam(
-            name="shell",
             environment=FunctionShellToolParamEnvironmentLocalEnvironmentParam(),
         ),
         ApplyPatchToolParam(),
-        AzureFunctionTool(azure_function={}),
+        # azure_function disabled for now. Re-enable once an Azure Function
+        # binding (function + input_binding + output_binding) is configured.
+        # AzureFunctionTool(azure_function={}),
     ]
 
 

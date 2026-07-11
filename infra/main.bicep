@@ -4,7 +4,7 @@
 @description('A short name for the environment, such as dev, test, or prod. This helps you keep deployments organized.')
 param environmentName string
 
-@description('The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only).')
+@description('The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning, gpt-5.3-codex) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only).')
 @allowed([
   'eastus2'
 ])
@@ -91,6 +91,12 @@ var gpt41ModelVersion = '2025-04-14'
 var phiMiniReasoningDeploymentName = 'Phi-4-mini-reasoning'
 var phiMiniReasoningModelType = 'Phi-4-mini-reasoning'
 var phiMiniReasoningModelVersion = '1'
+// gpt-5.3-codex: Codex-family agentic model. Required for the devops-assistant's
+// shell + apply_patch tools, which no non-Codex model accepts (and which the
+// older gpt-5-codex also rejects). local_shell is deprecated/removed API-wide.
+var codexDeploymentName = 'gpt-5-3-codex'
+var codexModelType = 'gpt-5.3-codex'
+var codexModelVersion = '2026-02-24'
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
   name: cosmosAccountName
@@ -289,6 +295,28 @@ resource phiMiniReasoningDeployment 'Microsoft.CognitiveServices/accounts/deploy
   }
   dependsOn: [
     gpt41Deployment
+  ]
+}
+
+// gpt-5.3-codex — Codex-family agentic model used by the devops-assistant for
+// the shell + apply_patch tools (verified working end-to-end). Deployed after
+// the Phi model to keep Cognitive Services deployment operations serialized.
+resource codexDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
+  parent: foundryResource
+  name: codexDeploymentName
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 10
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: codexModelType
+      version: codexModelVersion
+    }
+  }
+  dependsOn: [
+    phiMiniReasoningDeployment
   ]
 }
 

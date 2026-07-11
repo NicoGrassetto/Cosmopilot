@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.5.1644",
-      "templateHash": "9317765436813214613"
+      "templateHash": "14865690236586279561"
     }
   },
   "parameters": {
@@ -21,7 +21,7 @@
         "eastus2"
       ],
       "metadata": {
-        "description": "The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only)."
+        "description": "The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning, gpt-5.3-codex) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only)."
       }
     },
     "cosmosAccountName": {
@@ -148,7 +148,10 @@
     "gpt41ModelVersion": "2025-04-14",
     "phiMiniReasoningDeploymentName": "Phi-4-mini-reasoning",
     "phiMiniReasoningModelType": "Phi-4-mini-reasoning",
-    "phiMiniReasoningModelVersion": "1"
+    "phiMiniReasoningModelVersion": "1",
+    "codexDeploymentName": "gpt-5-3-codex",
+    "codexModelType": "gpt-5.3-codex",
+    "codexModelVersion": "2026-02-24"
   },
   "resources": [
     {
@@ -356,6 +359,26 @@
       "dependsOn": [
         "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
         "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', variables('projectFullName'), variables('codexDeploymentName'))]",
+      "sku": {
+        "name": "GlobalStandard",
+        "capacity": 10
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[variables('codexModelType')]",
+          "version": "[variables('codexModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]"
       ]
     },
     {
