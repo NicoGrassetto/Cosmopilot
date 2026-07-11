@@ -1,0 +1,6 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+azure-ai-projects>=2.3.0
+azure-identity>=1.16.0
+openai>=1.40.0
+python-dotenv>=1.0.0

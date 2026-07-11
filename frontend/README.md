@@ -1,156 +1,62 @@
 # Cosmopilot Frontend
 
-A modern, high-performance chatbot UI built with **Svelte**, the fastest frontend framework.
+A **React** (Vite) chat interface for talking to your Azure AI Foundry agents.
 
-## 🚀 Performance Comparison: Svelte vs React vs Vue
+## Features
 
-Based on 2024-2025 benchmarks, here's how they compare:
+- 💬 **Chat area** — threaded conversation with user/agent bubbles, typing
+  indicator, and inline error messages.
+- 🧠 **Agent selector** — dropdown populated live from your Foundry project; each
+  agent keeps its own conversation thread (multi-turn context).
+- 🎨 Gradient UI, responsive layout, no heavy UI libraries.
 
-### Performance Metrics
+## Stack
 
-| Framework | Bundle Size | FCP | TTI | Memory | Render Speed |
-|-----------|------------|-----|-----|--------|--------------|
-| **Svelte 5** | 3-12 KB | 800ms | 1.2s | 35 MB | ⚡ Fastest |
-| **Vue 4** | 22 KB | 1000ms | 1.5s | 45 MB | 🟢 Very Good |
-| **React 19** | 42-45 KB | 1200ms | 1.8s | 65 MB | 🟡 Good |
+HTML + CSS + JavaScript + **React 18** + **Vite**.
 
-### Why Svelte is Fastest?
-- **Compile-time magic**: Svelte compiles components at build time and ships **zero runtime framework**
-- **No Virtual DOM**: Generates highly optimized vanilla JavaScript
-- **Minimal overhead**: Only includes the code you actually use
-- **Reactive by default**: Built-in reactivity without extra libraries
+## Prerequisites
 
-## 📦 Project Structure
+The [backend](../backend/README.md) must be running (default
+`http://localhost:8000`). The Vite dev server proxies `/api/*` to it.
 
-```
-frontend/
-├── src/
-│   ├── App.svelte                 # Main app component
-│   ├── components/
-│   │   ├── Chatbot.svelte        # Chat interface
-│   │   ├── MessageBubble.svelte   # Message display
-│   │   └── InputBox.svelte        # Input field
-│   ├── main.js
-│   └── app.css
-├── public/
-├── index.html
-├── vite.config.js
-└── package.json
-```
-
-## 🛠️ Development
-
-### Installation
+## Setup & run
 
 ```bash
+cd frontend
 npm install
-```
-
-### Run Dev Server
-
-```bash
 npm run dev
 ```
 
-Then open [http://localhost:5173](http://localhost:5173)
+Open http://localhost:5173.
 
-### Build for Production
+### Configuration
+
+- `VITE_API_TARGET` — backend URL the dev server proxies to (default
+  `http://localhost:8000`).
+- `VITE_API_BASE` — absolute API base if you serve the built app without the Vite
+  proxy (e.g. `https://api.example.com`). Leave unset to use same-origin `/api`.
+
+## Build
 
 ```bash
-npm run build
+npm run build     # outputs to dist/
+npm run preview   # serve the production build
 ```
 
-Output: `dist/` folder ready for deployment
+## Project structure
 
-### Preview Production Build
-
-```bash
-npm run preview
 ```
-
-## 🎨 Features
-
-- ✨ **Modern UI** - Gradient header, smooth animations
-- 💬 **Message Bubbles** - Distinct styling for user/bot messages
-- ⌨️ **Input Handling** - Send with button or Enter key
-- 🔄 **Typing Indicator** - Animated dots while bot "types"
-- 📱 **Responsive Design** - Works on all screen sizes
-- 🎯 **Ready for Backend** - Easily connect to Azure Cosmos DB when ready
-
-## 📝 Dependencies
-
-```json
-{
-  "svelte": "^4.0.0",
-  "vite": "^5.0.0"
-}
+frontend/
+├── index.html
+├── vite.config.js            # React plugin + /api proxy to the backend
+├── src/
+│   ├── main.jsx
+│   ├── App.jsx               # chat state, agent threads, orchestration
+│   ├── api.js                # fetch helpers for /api/agents and /api/chat
+│   ├── index.css
+│   └── components/
+│       ├── AgentSelector.jsx
+│       ├── MessageBubble.jsx
+│       ├── InputBox.jsx
+│       └── TypingIndicator.jsx
 ```
-
-Pure HTML, CSS, and Svelte - no external UI libraries!
-
-## 🔗 Connecting to Backend
-
-When ready to connect to Azure Cosmos DB, update the `handleSendMessage()` function in `src/components/Chatbot.svelte` to:
-
-```javascript
-async function handleSendMessage(event) {
-  const userMessage = event.detail;
-  
-  messages = [...messages, {
-    id: messages.length + 1,
-    text: userMessage,
-    sender: 'user',
-    timestamp: new Date()
-  }];
-  
-  scrollToBottom();
-  isLoading = true;
-  
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userMessage })
-    });
-    
-    const data = await response.json();
-    messages = [...messages, {
-      id: messages.length + 1,
-      text: data.reply,
-      sender: 'bot',
-      timestamp: new Date()
-    }];
-  } catch (error) {
-    console.error('Error:', error);
-  } finally {
-    isLoading = false;
-    scrollToBottom();
-  }
-}
-```
-
-## 📊 Bundle Size
-
-- **Development**: ~43 KB (with all source maps)
-- **Production**: 16.97 KB gzipped (includes all dependencies)
-- **CSS**: 2.46 KB gzipped
-
-Compare to React/Vue which typically ship 40-45 KB just for the framework.
-
-## 🎯 Next Steps
-
-1. ✅ Frontend UI complete - currently using demo responses
-2. ⏳ Connect to backend API
-3. ⏳ Integrate Azure Cosmos DB for message persistence
-4. ⏳ Add authentication
-5. ⏳ Deploy to Azure
-
-## 📖 Resources
-
-- [Svelte Documentation](https://svelte.dev)
-- [Vite Documentation](https://vitejs.dev)
-- [Performance Benchmarks](https://usama.codes/blog/svelte-5-vs-react-19-vs-vue-4-comparison)
-
----
-
-Built with ⚡ Svelte for maximum performance

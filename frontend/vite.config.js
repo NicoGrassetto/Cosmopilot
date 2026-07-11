@@ -1,7 +1,17 @@
-import { defineConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
-// https://vite.dev/config/
+// The dev server proxies API calls to the FastAPI backend so the browser can
+// call same-origin `/api/*` paths (no CORS juggling during development).
 export default defineConfig({
-  plugins: [svelte()],
-})
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+});
