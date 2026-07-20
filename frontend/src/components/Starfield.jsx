@@ -73,7 +73,11 @@ export default function Starfield() {
     }
 
     function frame() {
-      ctx.clearRect(0, 0, width, height);
+      // Paint an explicit deep-space background so the canvas is never
+      // transparent (which can render as white on top of some compositors).
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#04040a';
+      ctx.fillRect(0, 0, width, height);
 
       // Planets — big, soft, slow radial glows.
       for (const pl of planets) {
@@ -83,7 +87,7 @@ export default function Starfield() {
         const g = ctx.createRadialGradient(pl.x, pl.y, 0, pl.x, pl.y, pl.r);
         g.addColorStop(0, pl.c1);
         g.addColorStop(1, 'transparent');
-        ctx.globalAlpha = 0.28;
+        ctx.globalAlpha = 0.35;
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.arc(pl.x, pl.y, pl.r, 0, Math.PI * 2);

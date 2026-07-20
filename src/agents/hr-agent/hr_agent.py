@@ -15,16 +15,20 @@ Note: file_search requires the vector store to exist in the project.
 
 from __future__ import annotations
 
+import logging
 import os
+import sys
 from pathlib import Path
 
-from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import (
     CodeInterpreterTool,
     FileSearchTool,
-    PromptAgentDefinition,
 )
-from azure.identity import DefaultAzureCredential
+
+# Make the shared ``agent`` module (src/agent.py) importable when this script is
+# run directly (src/ is two levels above this agent's folder).
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from agent import create  # noqa: E402  (import needs the sys.path setup above)
 
 # --- Foundry Skills (preview) helpers -----------------------------------------
 # Inlined from the former shared ``skills_util`` module so each agent script is
@@ -35,9 +39,6 @@ from azure.identity import DefaultAzureCredential
 import re
 from dataclasses import dataclass
 
-# Preview header required on every Skills API call.
-SKILLS_PREVIEW_FEATURE = "Skills=V1Preview"
-
 _NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$")
 
 
@@ -46,9 +47,7 @@ class LocalSkill:
     """A skill authored locally as ``skills/<name>/SKILL.md``."""
 
     name: str
-    description: str
     body: str
-    path: Path
 
 
 def _parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -76,87 +75,6 @@ def _parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     return meta, body.strip()
 
 
-def discover_skills(agent_dir: Path) -> list[LocalSkill]:
-    """Load every ``skills/*/SKILL.md`` under ``agent_dir``.
-
-    ``agent_dir`` is the directory of the agent script (``Path(__file__).parent``).
-    Returns an empty list when no ``skills/`` directory exists.
-    """
-
-    skills_root = Path(agent_dir) / "skills"
-    if not skills_root.is_dir():
-        return []
-
-    skills: list[LocalSkill] = []
-    for skill_md in sorted(skills_root.glob("*/SKILL.md")):
-        text = skill_md.read_text(encoding="utf-8")
-        meta, body = _parse_front_matter(text)
-        name = meta.get("name", skill_md.parent.name)
-        if not _NAME_PATTERN.match(name):
-            print(f"  ! Skipping skill '{name}' ({skill_md}): invalid name pattern")
-            continue
-        skills.append(
-            LocalSkill(
-                name=name,
-                description=meta.get("description", ""),
-                body=body,
-                path=skill_md,
-            )
-        )
-    return skills
-
-
-def register_skills(endpoint: str, credential, skills: list[LocalSkill], *, set_default: bool = True) -> None:
-    """Register each local skill as a Foundry skill version (preview, best-effort).
-
-    Builds its own ``AIProjectClient(..., allow_preview=True)`` so the caller's
-    agent-creation client is never affected. Any error (older SDK without the
-    preview kwarg, preview not enabled, missing RBAC) is logged and swallowed so
-    it never blocks agent creation.
-    """
-
-    if not skills:
-        return
-
-    try:
-        from azure.ai.projects import AIProjectClient
-        from azure.ai.projects.models import SkillInlineContent
-    except Exception as exc:  # noqa: BLE001 - SDK too old / preview models absent
-        print(f"  ! Skills API unavailable, skipping registration: {exc}")
-        return
-
-    try:
-        project = AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True)
-    except TypeError as exc:  # allow_preview unsupported on this SDK version
-        print(f"  ! SDK does not support the Skills preview client, skipping: {exc}")
-        return
-    except Exception as exc:  # noqa: BLE001
-        print(f"  ! Could not create preview client, skipping skills: {exc}")
-        return
-
-    beta = getattr(project, "beta", None)
-    skills_client = getattr(beta, "skills", None) if beta else None
-    if skills_client is None:
-        print("  ! project.beta.skills not available; skipping skill registration")
-        return
-
-    for skill in skills:
-        try:
-            created = skills_client.create(
-                name=skill.name,
-                inline_content=SkillInlineContent(
-                    description=skill.description,
-                    instructions=skill.body,
-                ),
-            )
-            version = getattr(created, "version", None)
-            if set_default and version:
-                skills_client.update(skill.name, default_version=version)
-            print(f"  ✓ Registered skill '{skill.name}' (version={version})")
-        except Exception as exc:  # noqa: BLE001 - preview API, degrade gracefully
-            print(f"  ! Could not register skill '{skill.name}': {exc}")
-
-
 def inject_into_instructions(base_instructions: str, skills: list[LocalSkill]) -> str:
     """Fold skill bodies into the agent's system prompt (direct-injection mode)."""
 
@@ -173,68 +91,63 @@ def inject_into_instructions(base_instructions: str, skills: list[LocalSkill]) -
     return "\n".join(blocks).strip()
 
 
-def apply_skills(agent_dir: Path, base_instructions: str, endpoint: str | None = None, credential=None) -> str:
-    """Convenience wrapper: discover, (optionally) register, and inject skills.
-
-    Pass ``endpoint`` and ``credential`` to also register the skills with Foundry
-    through the preview Skills API. Registration is best-effort; this function
-    always returns the augmented instructions (direct-injection mode).
+def apply_skills(agent_dir: Path, base_instructions: str) -> str:
+    """Discover local ``skills/<name>/SKILL.md`` files and inject them into the
+    agent's system prompt (direct-injection mode). Central registration with the
+    Foundry Skills API now lives in ``src/skills.py``.
     """
 
-    skills = discover_skills(agent_dir)
+    skills_root = Path(agent_dir) / "skills"
+    skills: list[LocalSkill] = []
+    if skills_root.is_dir():
+        for skill_md in sorted(skills_root.glob("*/SKILL.md")):
+            text = skill_md.read_text(encoding="utf-8")
+            meta, body = _parse_front_matter(text)
+            name = meta.get("name", skill_md.parent.name)
+            if not _NAME_PATTERN.match(name):
+                print(f"  ! Skipping skill '{name}' ({skill_md}): invalid name pattern")
+                continue
+            skills.append(LocalSkill(name=name, body=body))
+
     if not skills:
         return base_instructions
     print(f"  Found {len(skills)} local skill(s): {', '.join(s.name for s in skills)}")
-    if endpoint and credential is not None:
-        register_skills(endpoint, credential, skills)
+
     return inject_into_instructions(base_instructions, skills)
 # --- end Foundry Skills helpers -----------------------------------------------
-
-AGENT_NAME = "hr-assistant"
-
-# Which prompt to register the agent with. Swap for any file in ./prompts.
-PROMPTS_DIR = Path(__file__).parent / "prompts"
-PROMPT_FILE = PROMPTS_DIR / "hr_assistant.txt"
 
 
 def load_instructions(path: Path) -> str:
     return path.read_text(encoding="utf-8").strip()
 
 
-def build_tools() -> list:
-    return [
-        FileSearchTool(
-            vector_store_ids=[os.environ.get("HR_VECTOR_STORE_ID", "")],
-        ),
-        CodeInterpreterTool(),
-    ]
-
-
 def main() -> None:
-    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
-    credential = DefaultAzureCredential()
-    client = AIProjectClient(endpoint=endpoint, credential=credential)
+    
+    # Which prompt to register the agent with. Swap for any file in ./prompts.
+    PROMPTS_DIR = Path(__file__).parent / "prompts"
+    PROMPT_FILE = PROMPTS_DIR / "hr_assistant.txt"
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
+    )
 
     instructions = apply_skills(
         Path(__file__).parent,
         load_instructions(PROMPT_FILE),
-        endpoint=endpoint,
-        credential=credential,
     )
 
-    agent = client.agents.create_version(
-        agent_name=AGENT_NAME,
-        definition=PromptAgentDefinition(
-            model=os.environ["AZURE_DEPLOYMENT_NAME"],
-            instructions=instructions,
-            tools=build_tools(),
-            temperature=0.4,
-            top_p=0.95,
-        ),
+    create(
+        name="hr-assistant",
+        instructions=instructions,
         description="Conversational HR assistant for employee policy and benefits questions.",
+        tools=[
+            FileSearchTool(
+                vector_store_ids=[os.environ.get("HR_VECTOR_STORE_ID", "")],
+            ),
+            CodeInterpreterTool(),
+        ],
     )
-
-    print(f"Created agent: {agent.name} (version={agent.version})")
 
 
 if __name__ == "__main__":

@@ -38,9 +38,6 @@ from azure.identity import DefaultAzureCredential
 import re
 from dataclasses import dataclass
 
-# Preview header required on every Skills API call.
-SKILLS_PREVIEW_FEATURE = "Skills=V1Preview"
-
 _NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$")
 
 
@@ -49,9 +46,7 @@ class LocalSkill:
     """A skill authored locally as ``skills/<name>/SKILL.md``."""
 
     name: str
-    description: str
     body: str
-    path: Path
 
 
 def _parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -98,66 +93,8 @@ def discover_skills(agent_dir: Path) -> list[LocalSkill]:
         if not _NAME_PATTERN.match(name):
             print(f"  ! Skipping skill '{name}' ({skill_md}): invalid name pattern")
             continue
-        skills.append(
-            LocalSkill(
-                name=name,
-                description=meta.get("description", ""),
-                body=body,
-                path=skill_md,
-            )
-        )
+        skills.append(LocalSkill(name=name, body=body))
     return skills
-
-
-def register_skills(endpoint: str, credential, skills: list[LocalSkill], *, set_default: bool = True) -> None:
-    """Register each local skill as a Foundry skill version (preview, best-effort).
-
-    Builds its own ``AIProjectClient(..., allow_preview=True)`` so the caller's
-    agent-creation client is never affected. Any error (older SDK without the
-    preview kwarg, preview not enabled, missing RBAC) is logged and swallowed so
-    it never blocks agent creation.
-    """
-
-    if not skills:
-        return
-
-    try:
-        from azure.ai.projects import AIProjectClient
-        from azure.ai.projects.models import SkillInlineContent
-    except Exception as exc:  # noqa: BLE001 - SDK too old / preview models absent
-        print(f"  ! Skills API unavailable, skipping registration: {exc}")
-        return
-
-    try:
-        project = AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True)
-    except TypeError as exc:  # allow_preview unsupported on this SDK version
-        print(f"  ! SDK does not support the Skills preview client, skipping: {exc}")
-        return
-    except Exception as exc:  # noqa: BLE001
-        print(f"  ! Could not create preview client, skipping skills: {exc}")
-        return
-
-    beta = getattr(project, "beta", None)
-    skills_client = getattr(beta, "skills", None) if beta else None
-    if skills_client is None:
-        print("  ! project.beta.skills not available; skipping skill registration")
-        return
-
-    for skill in skills:
-        try:
-            created = skills_client.create(
-                name=skill.name,
-                inline_content=SkillInlineContent(
-                    description=skill.description,
-                    instructions=skill.body,
-                ),
-            )
-            version = getattr(created, "version", None)
-            if set_default and version:
-                skills_client.update(skill.name, default_version=version)
-            print(f"  ✓ Registered skill '{skill.name}' (version={version})")
-        except Exception as exc:  # noqa: BLE001 - preview API, degrade gracefully
-            print(f"  ! Could not register skill '{skill.name}': {exc}")
 
 
 def inject_into_instructions(base_instructions: str, skills: list[LocalSkill]) -> str:
@@ -176,20 +113,16 @@ def inject_into_instructions(base_instructions: str, skills: list[LocalSkill]) -
     return "\n".join(blocks).strip()
 
 
-def apply_skills(agent_dir: Path, base_instructions: str, endpoint: str | None = None, credential=None) -> str:
-    """Convenience wrapper: discover, (optionally) register, and inject skills.
-
-    Pass ``endpoint`` and ``credential`` to also register the skills with Foundry
-    through the preview Skills API. Registration is best-effort; this function
-    always returns the augmented instructions (direct-injection mode).
+def apply_skills(agent_dir: Path, base_instructions: str) -> str:
+    """Discover local skills and inject them into the agent's system prompt
+    (direct-injection mode). Central registration with the Foundry Skills API
+    now lives in ``src/skills.py``.
     """
 
     skills = discover_skills(agent_dir)
     if not skills:
         return base_instructions
     print(f"  Found {len(skills)} local skill(s): {', '.join(s.name for s in skills)}")
-    if endpoint and credential is not None:
-        register_skills(endpoint, credential, skills)
     return inject_into_instructions(base_instructions, skills)
 # --- end Foundry Skills helpers -----------------------------------------------
 
@@ -218,8 +151,6 @@ def main() -> None:
     instructions = apply_skills(
         Path(__file__).parent,
         PROMPT_FILE.read_text(encoding="utf-8").strip(),
-        endpoint=endpoint,
-        credential=credential,
     )
 
     agent = client.agents.create_version(
