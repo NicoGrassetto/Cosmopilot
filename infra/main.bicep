@@ -410,6 +410,56 @@ resource searchConnection 'Microsoft.CognitiveServices/accounts/projects/connect
   }
 }
 
+// ===== Observability: Application Insights (+ Log Analytics workspace) =====
+// Backing store for Foundry client-side tracing. The project connection below
+// wires it to the Foundry project so the portal Tracing tab lights up and
+// telemetry.get_application_insights_connection_string() resolves at runtime.
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: '${projectFullName}-logs'
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+  }
+  tags: {
+    environment: demoEnvironment
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: '${projectFullName}-appi'
+  location: location
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
+  }
+  tags: {
+    environment: demoEnvironment
+  }
+}
+
+// Project-scoped connection exposing App Insights to the Foundry project.
+resource appInsightsConnection 'Microsoft.CognitiveServices/accounts/projects/connections@2025-04-01-preview' = {
+  parent: foundryProject
+  name: 'appinsights'
+  properties: {
+    category: 'AppInsights'
+    target: appInsights.id
+    authType: 'ApiKey'
+    isSharedToAll: true
+    credentials: {
+      key: appInsights.properties.ConnectionString
+    }
+    metadata: {
+      ApiType: 'Azure'
+      ResourceId: appInsights.id
+    }
+  }
+}
+
 // ===== Outputs =====
 // Cosmos DB outputs
 output cosmosAccountName string = cosmosAccount.name
@@ -423,6 +473,8 @@ output foundryResourceId string = foundryResource.id
 output foundryProjectName string = foundryProject.name
 output foundryProjectId string = foundryProject.id
 output foundryProjectEndpoint string = 'https://${projectFullName}.services.ai.azure.com/api/projects/${projectFullName}'
+output appInsightsName string = appInsights.name
+output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output modelDeploymentName string = modelDeploymentName
 output modelDeploymentId string = modelDeployment.id
 output modelType string = modelType
