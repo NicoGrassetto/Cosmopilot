@@ -39,47 +39,54 @@ from agent import create  # noqa: E402  (import needs the sys.path setup above)
 import re
 from dataclasses import dataclass
 
-_NAME_PATTERN = re.compile(r"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$")
 
-
-@dataclass
-class LocalSkill:
-    """A skill authored locally as ``skills/<name>/SKILL.md``."""
-
-    name: str
-    body: str
-
-
-def _parse_front_matter(text: str) -> tuple[dict[str, str], str]:
-    """Parse a minimal ``key: value`` YAML front matter block.
-
-    Returns ``(metadata, body)``. Avoids a hard PyYAML dependency because the
-    SKILL.md front matter only uses simple unquoted scalar fields.
+def apply_skills(agent_dir: Path, base_instructions: str) -> str:
+    """Discover local ``skills/<name>/SKILL.md`` files and inject them into the
+    agent's system prompt (direct-injection mode). Central registration with the
+    Foundry Skills API now lives in ``src/skills.py``.
     """
 
-    if not text.startswith("---"):
-        return {}, text.strip()
+    name_pattern = re.compile(r"^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$")
 
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return {}, text.strip()
+    @dataclass
+    class LocalSkill:
+        """A skill authored locally as ``skills/<name>/SKILL.md``."""
 
-    _, front, body = parts
-    meta: dict[str, str] = {}
-    for line in front.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        meta[key.strip().lower()] = value.strip().strip('"').strip("'")
-    return meta, body.strip()
+        name: str
+        body: str
 
+    skills_root = Path(agent_dir) / "skills"
+    skills: list[LocalSkill] = []
+    if skills_root.is_dir():
+        for skill_md in sorted(skills_root.glob("*/SKILL.md")):
+            text = skill_md.read_text(encoding="utf-8")
 
-def inject_into_instructions(base_instructions: str, skills: list[LocalSkill]) -> str:
-    """Fold skill bodies into the agent's system prompt (direct-injection mode)."""
+            # Parse a minimal ``key: value`` YAML front matter block (avoids a
+            # hard PyYAML dependency; SKILL.md front matter uses simple unquoted
+            # scalar fields).
+            meta: dict[str, str] = {}
+            parts = text.split("---", 2)
+            if text.startswith("---") and len(parts) >= 3:
+                _, front, body = parts
+                body = body.strip()
+                for line in front.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#") or ":" not in line:
+                        continue
+                    key, _, value = line.partition(":")
+                    meta[key.strip().lower()] = value.strip().strip('"').strip("'")
+            else:
+                body = text.strip()
+
+            name = meta.get("name", skill_md.parent.name)
+            if not name_pattern.match(name):
+                print(f"  ! Skipping skill '{name}' ({skill_md}): invalid name pattern")
+                continue
+            skills.append(LocalSkill(name=name, body=body))
 
     if not skills:
         return base_instructions
+    print(f"  Found {len(skills)} local skill(s): {', '.join(s.name for s in skills)}")
 
     blocks = [base_instructions.strip(), "", "# Attached skills (Foundry preview)", ""]
     blocks.append(
@@ -89,36 +96,7 @@ def inject_into_instructions(base_instructions: str, skills: list[LocalSkill]) -
     for skill in skills:
         blocks.extend(["", f"<skill name=\"{skill.name}\">", skill.body.strip(), "</skill>"])
     return "\n".join(blocks).strip()
-
-
-def apply_skills(agent_dir: Path, base_instructions: str) -> str:
-    """Discover local ``skills/<name>/SKILL.md`` files and inject them into the
-    agent's system prompt (direct-injection mode). Central registration with the
-    Foundry Skills API now lives in ``src/skills.py``.
-    """
-
-    skills_root = Path(agent_dir) / "skills"
-    skills: list[LocalSkill] = []
-    if skills_root.is_dir():
-        for skill_md in sorted(skills_root.glob("*/SKILL.md")):
-            text = skill_md.read_text(encoding="utf-8")
-            meta, body = _parse_front_matter(text)
-            name = meta.get("name", skill_md.parent.name)
-            if not _NAME_PATTERN.match(name):
-                print(f"  ! Skipping skill '{name}' ({skill_md}): invalid name pattern")
-                continue
-            skills.append(LocalSkill(name=name, body=body))
-
-    if not skills:
-        return base_instructions
-    print(f"  Found {len(skills)} local skill(s): {', '.join(s.name for s in skills)}")
-
-    return inject_into_instructions(base_instructions, skills)
 # --- end Foundry Skills helpers -----------------------------------------------
-
-
-def load_instructions(path: Path) -> str:
-    return path.read_text(encoding="utf-8").strip()
 
 
 def main() -> None:
@@ -134,7 +112,7 @@ def main() -> None:
 
     instructions = apply_skills(
         Path(__file__).parent,
-        load_instructions(PROMPT_FILE),
+        PROMPT_FILE.read_text(encoding="utf-8").strip(),
     )
 
     create(
