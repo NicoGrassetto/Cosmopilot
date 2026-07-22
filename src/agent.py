@@ -9,6 +9,9 @@ from azure.ai.projects.models import PromptAgentDefinition, Tool
 from azure.identity import DefaultAzureCredential
 from opentelemetry import trace
 
+from azure.ai.projects.telemetry import AIProjectInstrumentor
+from azure.monitor.opentelemetry import configure_azure_monitor
+
 logger = logging.getLogger(__name__)
 
 # --- Foundry client-side tracing (preview) ------------------------------------
@@ -20,23 +23,8 @@ logger = logging.getLogger(__name__)
 os.environ.setdefault("AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING", "true")
 os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
 
-tracer = trace.get_tracer(__name__)
 _tracing_ready = False
 
-
-def _enable_tracing(client: AIProjectClient) -> None:
-    """Send OpenTelemetry spans to the Application Insights connected to the
-    Foundry project. Runs once per process; safe to call on every run()."""
-    global _tracing_ready
-    if _tracing_ready:
-        return
-    from azure.ai.projects.telemetry import AIProjectInstrumentor
-    from azure.monitor.opentelemetry import configure_azure_monitor
-
-    conn = client.telemetry.get_application_insights_connection_string()
-    configure_azure_monitor(connection_string=conn)  # export spans to App Insights
-    AIProjectInstrumentor().instrument()              # auto-instrument the Responses API
-    _tracing_ready = True
 
 def create(name: str, instructions: str, description: str, tools: list[Tool] | None = None, temperature: float = 0.4, top_p: float = 0.95):
     endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
@@ -58,26 +46,39 @@ def create(name: str, instructions: str, description: str, tools: list[Tool] | N
 
 
 def run(name: str, prompt: str) -> str:
-    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
-    credential = DefaultAzureCredential()
-    client = AIProjectClient(endpoint=endpoint, credential=credential)
+    global _tracing_ready
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
 
-    _enable_tracing(client)
+    # Enable Foundry client-side tracing once per process: export spans to the
+    # Application Insights connected to the project and auto-instrument the
+    # Responses API.
+    if not _tracing_ready:
+        configure_azure_monitor(
+            connection_string=client.telemetry.get_application_insights_connection_string()
+        )
+        AIProjectInstrumentor().instrument()
+        _tracing_ready = True
+
+    tracer = trace.get_tracer(__name__)
 
     # Resolve the agent's latest version so its id can go in agent_reference.
     # Passing name + id lets Foundry correlate the trace to this exact agent.
     agent = next(iter(client.agents.list_versions(agent_name=name, order="desc")))
-
     openai = client.get_openai_client()
-    with tracer.start_as_current_span("run"):
-        response = openai.responses.create(
-            input=prompt,
-            extra_body={
-                "agent_reference": {
-                    "type": "agent_reference",
-                    "name": agent.name,
-                    "id": agent.id,
-                }
-            },
-        )
+    body = {
+        "input": prompt,
+        "extra_body": {
+            "agent_reference": {"type": "agent_reference", "name": agent.name, "id": agent.id}
+        },
+    }
+
+    # The preview GenAI instrumentation occasionally races on the first
+    # instrumented call in a fresh process (AttributeError on a NonRecordingSpan);
+    # the exporter is warm afterwards, so one retry succeeds.
+    try:
+        with tracer.start_as_current_span("run"):
+            response = openai.responses.create(**body)
+    except AttributeError:
+        with tracer.start_as_current_span("run"):
+            response = openai.responses.create(**body)
     return response.output_text
