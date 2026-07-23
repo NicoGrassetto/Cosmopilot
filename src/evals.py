@@ -1,16 +1,73 @@
-"""Evaluation logic for Cosmopilot.
+"""Evaluation harness for the Cosmopilot Azure Cosmos DB assistant.
 
-Two functions:
+This module connects the project's question/answer dataset to `Azure AI Foundry
+<https://ai.azure.com>`_ and the ``azure-ai-evaluation`` SDK so the quality,
+safety, and agent behaviour of the assistant can be scored reproducibly, either
+locally or in CI.
 
-* ``run`` — runs the whole evaluation suite: registers the reusable OpenAI-graded
-  evals in the Foundry project, then runs every ready-made ``azure-ai-evaluation``
-  built-in evaluator (quality, safety, and agent) over the dataset.
-* ``upload_dataset`` — registers (uploads) the eval dataset in the Foundry project.
+It exposes two entry points:
+
+* ``run`` registers a set of reusable, OpenAI-graded evals in the Foundry project
+  and then executes every ready-made ``azure-ai-evaluation`` built-in evaluator
+  (quality, safety, and -- when an agent-trace dataset is present -- agent) over
+  the dataset.
+* ``upload_dataset`` uploads the question/answer dataset to the Foundry project as
+  a versioned, reusable dataset.
+
+The module is also runnable as a script (see the ``__main__`` block)::
+
+    $ python src/evals.py upload   # upload the dataset only
+    $ python src/evals.py run      # register the evals and run every evaluator
+    $ python src/evals.py all      # upload, then run
+
+Authentication is handled by ``DefaultAzureCredential``, so sign in with the Azure
+CLI (``az login``) or provide the usual environment / managed-identity credentials
+before calling either function.
+
+Environment Variables:
+    AZURE_AI_PROJECT_ENDPOINT (str): **Required.** Full endpoint of the target
+        Azure AI Foundry project, e.g.
+        ``https://<resource>.services.ai.azure.com/api/projects/<project>``.
+    AZURE_DEPLOYMENT_NAME (str): Model deployment used as the judge/grader for the
+        AI-assisted evaluators and OpenAI-graded evals. Defaults to
+        ``"gpt-4o-mini"``.
+    AZURE_OPENAI_API_VERSION (str): Azure OpenAI API version used by the judge
+        model config. Defaults to ``"2024-08-01-preview"``.
+    DATASET_VERSION (str): Version label applied when uploading the dataset.
+        Foundry dataset versions are immutable, so CI typically overrides this per
+        change (e.g. the commit SHA). Defaults to ``"1"``.
+
+Attributes:
+    PREFIX (str): Common name prefix (``"cosmopilot"``) applied to every eval and
+        dataset registered in Foundry.
+    DATASET_NAME (str): Default Foundry dataset name
+        (``"cosmopilot-eval-dataset"``).
+    DATASET_VERSION (str): Default dataset version, read from the
+        ``DATASET_VERSION`` environment variable (falling back to ``"1"``).
+    custom_data_source_config (DataSourceConfigCustom): Item schema describing the
+        ``question``/``answer`` shape of each dataset row, used when registering
+        the OpenAI-graded evals.
+    logs_data_source_config (DataSourceConfigLogs): Metadata-filtered logs data
+        source config, kept for reference (not currently consumed by ``run``).
+    TEXT_SIMILARITY_METRICS (list[str]): Text-similarity metrics registered for the
+        ``cosmopilot-text_similarity`` eval. ``"cosine"`` is intentionally omitted
+        because the Foundry eval service rejects it.
+
+Example:
+    Run the full suite against a Foundry project after ``az login``::
+
+        import os
+
+        os.environ["AZURE_AI_PROJECT_ENDPOINT"] = (
+            "https://my-res.services.ai.azure.com/api/projects/my-proj"
+        )
+        run()  # registers the evals and scores the dataset
 """
 
 import csv
 import json
 import os
+from typing import Any, cast
 
 from azure.ai.evaluation import (
     BleuScoreEvaluator,
@@ -40,10 +97,17 @@ from azure.ai.evaluation import (
     ToolCallAccuracyEvaluator,
     UngroundedAttributesEvaluator,
     ViolenceEvaluator,
-    evaluate,
 )
+
+from azure.ai.evaluation import evaluate  # pyright: ignore
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import FileDatasetVersion
 from azure.identity import DefaultAzureCredential
+from openai.types.eval_create_params import (
+    DataSourceConfigCustom,
+    DataSourceConfigLogs,
+    TestingCriterionTextSimilarity,
+)
 
 PREFIX = "cosmopilot"
 
@@ -52,7 +116,7 @@ DATASET_NAME = f"{PREFIX}-eval-dataset"
 # (e.g. with the commit SHA) to avoid version collisions on re-upload.
 DATASET_VERSION = os.environ.get("DATASET_VERSION", "1")
 
-custom_data_source_config = {
+custom_data_source_config: DataSourceConfigCustom = {
     "type": "custom",
     "item_schema": {
         "type": "object",
@@ -65,7 +129,7 @@ custom_data_source_config = {
     "include_sample_schema": True,
 }
 
-logs_data_source_config = {
+logs_data_source_config: DataSourceConfigLogs = {
     "type": "logs",
     "metadata": {
         "usecase": "cosmos-assistant",
@@ -89,7 +153,50 @@ TEXT_SIMILARITY_METRICS = [
 
 
 def run():
-    """Run the whole evaluation suite (registers evals, then runs all evaluators)."""
+    """Register the reusable evals and score the dataset with every evaluator.
+
+    Performs the full offline evaluation pass for Cosmopilot:
+
+    1. Registers four reusable, OpenAI-graded evals in the Foundry project
+       (``cosmopilot-relevant``, ``cosmopilot-text_similarity``,
+       ``cosmopilot-string_check``, and ``cosmopilot-score_model``).
+    2. Converts ``data/datasets/eval_dataset.csv`` into the JSONL layout expected
+       by ``azure.ai.evaluation.evaluate`` (``query``/``response``/
+       ``ground_truth``/``context`` fields).
+    3. Runs the built-in ``azure-ai-evaluation`` quality and safety evaluators over
+       that dataset, and -- only if ``data/datasets/agent_eval_dataset.jsonl``
+       exists -- the agent evaluators.
+
+    The judge model and Foundry project are taken from the environment (see the
+    module docstring), and authentication uses ``DefaultAzureCredential``.
+
+    This function takes no arguments and returns ``None``; its effects are the
+    evals registered in Foundry, the generated JSONL file on disk, and the
+    evaluation runs/results reported to the project.
+
+    Raises:
+        KeyError: If the ``AZURE_AI_PROJECT_ENDPOINT`` environment variable is not
+            set.
+        FileNotFoundError: If ``data/datasets/eval_dataset.csv`` is missing.
+        azure.core.exceptions.HttpResponseError: If registering an eval or running
+            an evaluator against the Foundry project fails (e.g. authentication,
+            quota, or an invalid judge-model deployment).
+
+    Example:
+        Score the dataset after signing in with ``az login``::
+
+            import os
+
+            os.environ["AZURE_AI_PROJECT_ENDPOINT"] = (
+                "https://my-res.services.ai.azure.com/api/projects/my-proj"
+            )
+            os.environ["AZURE_DEPLOYMENT_NAME"] = "gpt-4o-mini"
+            run()
+
+        Or from the command line::
+
+            $ python src/evals.py run
+    """
     endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
     model = os.environ.get("AZURE_DEPLOYMENT_NAME", "gpt-4o-mini")
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data", "datasets")
@@ -132,17 +239,20 @@ def run():
     openai_client.evals.create(
         name=f"{PREFIX}-text_similarity",
         data_source_config=custom_data_source_config,
-        testing_criteria=[
-            {
-                "type": "text_similarity",
-                "name": f"answer-similarity-{metric}",
-                "input": "{{sample.output_text}}",
-                "reference": "{{item.answer}}",
-                "evaluation_metric": metric,
-                "pass_threshold": 0.8,
-            }
-            for metric in TEXT_SIMILARITY_METRICS
-        ],
+        testing_criteria=cast(
+            "list[TestingCriterionTextSimilarity]",
+            [
+                {
+                    "type": "text_similarity",
+                    "name": f"answer-similarity-{metric}",
+                    "input": "{{sample.output_text}}",
+                    "reference": "{{item.answer}}",
+                    "evaluation_metric": metric,
+                    "pass_threshold": 0.8,
+                }
+                for metric in TEXT_SIMILARITY_METRICS
+            ],
+        ),
     )
 
     openai_client.evals.create(
@@ -209,7 +319,7 @@ def run():
     azure_ai_project = endpoint
 
     # Quality / textual-similarity / RAG. Fields: query, response, context, ground_truth.
-    quality_evaluators = {
+    quality_evaluators: dict[str, Any] = {
         "coherence": CoherenceEvaluator(evaluator_model_config),
         "fluency": FluencyEvaluator(evaluator_model_config),
         "similarity": SimilarityEvaluator(evaluator_model_config),
@@ -229,7 +339,7 @@ def run():
     }
 
     # Risk and safety. Fields: query, response (content is sent to Content Safety).
-    safety_evaluators = {
+    safety_evaluators: dict[str, Any] = {
         "content_safety": ContentSafetyEvaluator(credential, azure_ai_project),
         "hate_unfairness": HateUnfairnessEvaluator(credential, azure_ai_project),
         "sexual": SexualEvaluator(credential, azure_ai_project),
@@ -242,7 +352,7 @@ def run():
     }
 
     # Agent. Require agent traces: tool_calls + tool_definitions plus query/response.
-    agent_evaluators = {
+    agent_evaluators: dict[str, Any] = {
         "intent_resolution": IntentResolutionEvaluator(evaluator_model_config),
         "task_adherence": TaskAdherenceEvaluator(evaluator_model_config),
         "tool_call_accuracy": ToolCallAccuracyEvaluator(evaluator_model_config),
@@ -293,11 +403,49 @@ def run():
         )
 
 
-def upload_dataset(name=DATASET_NAME, version=DATASET_VERSION):
-    """Register (upload) the eval dataset in the Foundry project.
+def upload_dataset(name: str = DATASET_NAME, version: str = DATASET_VERSION) -> FileDatasetVersion:
+    """Upload the question/answer eval dataset to the Foundry project.
 
-    Converts the Q&A CSV into the JSONL layout, uploads it as a Foundry dataset,
-    and returns the resulting dataset version (which carries an ``id``).
+    Converts ``data/datasets/eval_dataset.csv`` into the JSONL layout used by the
+    evaluators (one JSON object per row with ``query``, ``response``,
+    ``ground_truth``, and ``context`` fields) and registers it as a versioned
+    dataset in the Azure AI Foundry project named by ``AZURE_AI_PROJECT_ENDPOINT``.
+
+    Foundry dataset versions are immutable: uploading the same ``name``/``version``
+    twice fails, so pass a fresh ``version`` (CI usually uses the commit SHA).
+
+    Args:
+        name: Name to register the dataset under in Foundry. Defaults to
+            ``DATASET_NAME`` (``"cosmopilot-eval-dataset"``).
+        version: Immutable version label for this upload. Defaults to
+            ``DATASET_VERSION`` (the ``DATASET_VERSION`` environment variable, or
+            ``"1"`` if unset).
+
+    Returns:
+        FileDatasetVersion: The registered dataset version. Its ``id`` attribute is
+        the fully-qualified dataset reference that evals and runs point at.
+
+    Raises:
+        KeyError: If the ``AZURE_AI_PROJECT_ENDPOINT`` environment variable is not
+            set.
+        FileNotFoundError: If ``data/datasets/eval_dataset.csv`` is missing.
+        azure.core.exceptions.HttpResponseError: If the upload fails, including when
+            ``name``/``version`` already exists (versions are immutable).
+
+    Example:
+        Upload a new version and read back its id::
+
+            import os
+
+            os.environ["AZURE_AI_PROJECT_ENDPOINT"] = (
+                "https://my-res.services.ai.azure.com/api/projects/my-proj"
+            )
+            dataset = upload_dataset(version="42")
+            print(dataset.id)
+
+        Or from the command line (uses ``DATASET_VERSION``)::
+
+            $ DATASET_VERSION=42 python src/evals.py upload
     """
     endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
     data_dir = os.path.join(os.path.dirname(__file__), "..", "data", "datasets")
