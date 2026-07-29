@@ -2,15 +2,19 @@
 
 Prompt-based agent whose system prompt is loaded from a .txt file in ./prompts.
 Tools: file_search (ground answers in HR policy docs) + code_interpreter
-(compute leave balances, proration, dates).
+(compute leave balances, proration, dates) + bing_grounding (live public web
+results via Grounding with Bing Search) + function (get_pto_balance, executed
+client-side by the run() loop in src/agent.py).
 
 Env vars:
     AZURE_AI_PROJECT_ENDPOINT   Foundry project endpoint
     AZURE_DEPLOYMENT_NAME       Chat model deployment (e.g. gpt-4-1-nano)
-    HR_VECTOR_STORE_ID          Vector store id with HR policy documents
+    VECTOR_STORE_ID             Vector store id with HR policy documents
+    AZURE_BING_CONNECTION_ID    Foundry connection id for Grounding with Bing Search
 
 Auth: DefaultAzureCredential (run `az login` first).
-Note: file_search requires the vector store to exist in the project.
+Note: file_search requires the vector store to exist in the project;
+bing_grounding requires the Bing connection (AZURE_BING_CONNECTION_ID).
 """
 
 from __future__ import annotations
@@ -21,8 +25,13 @@ import sys
 from pathlib import Path
 
 from azure.ai.projects.models import (
+    BingGroundingSearchConfiguration,
+    BingGroundingSearchToolParameters,
+    BingGroundingTool,
     CodeInterpreterTool,
     FileSearchTool,
+    FunctionTool,
+    # WebSearchPreviewTool,  # uncomment to enable the (commented-out) web_search tool below
 )
 
 # Make the shared ``agent`` module (src/agent.py) importable when this script is
@@ -121,9 +130,38 @@ def main() -> None:
         description="Conversational HR assistant for employee policy and benefits questions.",
         tools=[
             FileSearchTool(
-                vector_store_ids=[os.environ.get("HR_VECTOR_STORE_ID", "")],
+                vector_store_ids=[os.environ.get("VECTOR_STORE_ID", "")],
             ),
             CodeInterpreterTool(),
+            BingGroundingTool(
+                bing_grounding=BingGroundingSearchToolParameters(
+                    search_configurations=[
+                        BingGroundingSearchConfiguration(
+                            project_connection_id=os.environ.get("AZURE_BING_CONNECTION_ID", ""),
+                        ),
+                    ],
+                ),
+            ),
+            # Function calling: the model emits a function_call; the app runs the
+            # matching Python (src/agent.py TOOLS["get_pto_balance"]) and feeds the
+            # result back via the run() loop. Needs no connection/resource.
+            FunctionTool(
+                name="get_pto_balance",
+                description="Return an employee's remaining paid-time-off (PTO) balance, in days.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "employee_id": {
+                            "type": "string",
+                            "description": "The employee's unique ID.",
+                        },
+                    },
+                    "required": ["employee_id"],
+                    "additionalProperties": False,
+                },
+                strict=False,
+            ),
+            # WebSearchPreviewTool(),
         ],
     )
 

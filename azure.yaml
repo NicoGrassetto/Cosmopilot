@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+name: cosmopilot
+metadata:
+  template: cosmopilot@1.0.0
+# Infrastructure-only azd project: `azd up` provisions the Cosmos DB + Azure AI
+# Foundry demo infrastructure. There are no app hosting targets to deploy code to,
+# so there is no `services:` section.
+infra:
+  provider: bicep
+  path: infra
+  module: main

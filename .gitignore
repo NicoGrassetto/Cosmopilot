@@ -6,6 +6,10 @@
 # Python
 __pycache__/
 *.pyc
+.venv/
+
+# VS Code (local, machine-specific interpreter selection)
+.vscode/
 
 # macOS
 .DS_Store

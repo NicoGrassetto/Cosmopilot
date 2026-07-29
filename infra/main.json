@@ -1,18 +1,20 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
       "version": "0.38.5.1644",
-      "templateHash": "14865690236586279561"
+      "templateHash": "10104500053728234960"
     }
   },
   "parameters": {
     "environmentName": {
       "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
       "metadata": {
-        "description": "A short name for the environment, such as dev, test, or prod. This helps you keep deployments organized."
+        "description": "Name of the azd environment. Used to name the resource group (rg-<name>) and to derive a unique resource token."
       }
     },
     "location": {
@@ -21,582 +23,796 @@
         "eastus2"
       ],
       "metadata": {
-        "description": "The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning, gpt-5.3-codex) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only)."
-      }
-    },
-    "cosmosAccountName": {
-      "type": "string",
-      "metadata": {
-        "description": "The Cosmos DB account name. It must be globally unique across Azure and use only lowercase letters, numbers, and hyphens."
-      }
-    },
-    "sqlDatabaseName": {
-      "type": "string",
-      "metadata": {
-        "description": "The SQL database name inside the Cosmos DB account. This is like a logical database for your app data."
-      }
-    },
-    "containerName": {
-      "type": "string",
-      "metadata": {
-        "description": "The container name inside the SQL database. This is where your items will be stored."
-      }
-    },
-    "partitionKeyPath": {
-      "type": "string",
-      "defaultValue": "/tenantId",
-      "metadata": {
-        "description": "The partition key path for the container. This is the field Cosmos DB uses to spread data across partitions. Example: /tenantId"
-      }
-    },
-    "throughput": {
-      "type": "int",
-      "defaultValue": 400,
-      "metadata": {
-        "description": "The throughput for the container in request units per second (RU/s). A small value like 400 is fine for development."
-      }
-    },
-    "consistencyLevel": {
-      "type": "string",
-      "defaultValue": "Session",
-      "allowedValues": [
-        "BoundedStaleness",
-        "ConsistentPrefix",
-        "Session",
-        "Strong",
-        "Eventual"
-      ],
-      "metadata": {
-        "description": "The consistency level for the account. Session is a good default for most apps."
-      }
-    },
-    "projectName": {
-      "type": "string",
-      "metadata": {
-        "description": "Foundry Project name - must be globally unique"
-      }
-    },
-    "publicNetworkAccess": {
-      "type": "string",
-      "defaultValue": "Enabled",
-      "metadata": {
-        "description": "Project public network access"
-      }
-    },
-    "enableDataIsolation": {
-      "type": "bool",
-      "defaultValue": false,
-      "metadata": {
-        "description": "Enable data isolation for the project"
-      }
-    },
-    "bingAccountName": {
-      "type": "string",
-      "defaultValue": "bing-grounding",
-      "metadata": {
-        "description": "Name for the Grounding with Bing Search account. Must be unique within the resource group."
-      }
-    },
-    "searchServiceName": {
-      "type": "string",
-      "defaultValue": "cosmopilot-search",
-      "metadata": {
-        "description": "Name for the Azure AI Search service. Must be globally unique, 2-60 chars, lowercase letters, digits, and hyphens (no leading/trailing hyphen)."
-      }
-    },
-    "searchServiceSku": {
-      "type": "string",
-      "defaultValue": "basic",
-      "allowedValues": [
-        "free",
-        "basic",
-        "standard"
-      ],
-      "metadata": {
-        "description": "Azure AI Search SKU. Basic is a good default for a demo; free allows only one per subscription."
-      }
-    },
-    "searchIndexName": {
-      "type": "string",
-      "defaultValue": "knowledge-docs",
-      "metadata": {
-        "description": "Name of the search index that the knowledge-assistant queries."
+        "description": "Primary location for all resources except Azure AI Search. Locked to East US 2 — the only region with every required model deployment and the full Foundry evaluation suite."
       }
     },
     "searchLocation": {
       "type": "string",
-      "defaultValue": "[parameters('location')]",
       "metadata": {
-        "description": "Region for the Azure AI Search service. Defaults to the main location; override if that region is out of Search capacity."
-      }
+        "azd": {
+          "type": "location"
+        },
+        "description": "Region for the Azure AI Search service only. Prompted during `azd up`; can differ from the primary region since Search is reached over a global *.search.windows.net endpoint. Pick another region if East US 2 is out of Search capacity."
+      },
+      "minLength": 1
     }
   },
   "variables": {
-    "uniqueSuffix": "[uniqueString(resourceGroup().id)]",
-    "projectFullName": "[format('{0}-{1}', parameters('projectName'), variables('uniqueSuffix'))]",
-    "demoEnvironment": "demo",
-    "modelDeploymentName": "gpt-4-1-nano",
-    "modelType": "gpt-4.1-nano",
-    "embeddingDeploymentName": "text-embedding-ada-002",
-    "embeddingModelType": "text-embedding-ada-002",
-    "searchFullName": "[format('{0}-{1}', parameters('searchServiceName'), variables('uniqueSuffix'))]",
-    "modelRouterDeploymentName": "model-router",
-    "modelRouterModelType": "model-router",
-    "modelRouterModelVersion": "2025-11-18",
-    "gpt41DeploymentName": "gpt-4.1",
-    "gpt41ModelType": "gpt-4.1",
-    "gpt41ModelVersion": "2025-04-14",
-    "phiMiniReasoningDeploymentName": "Phi-4-mini-reasoning",
-    "phiMiniReasoningModelType": "Phi-4-mini-reasoning",
-    "phiMiniReasoningModelVersion": "1",
-    "codexDeploymentName": "gpt-5-3-codex",
-    "codexModelType": "gpt-5.3-codex",
-    "codexModelVersion": "2026-02-24"
+    "resourceToken": "[toLower(uniqueString(subscription().id, parameters('environmentName'), parameters('location')))]",
+    "tags": {
+      "azd-env-name": "[parameters('environmentName')]"
+    }
   },
   "resources": [
     {
-      "type": "Microsoft.DocumentDB/databaseAccounts",
-      "apiVersion": "2024-05-15",
-      "name": "[parameters('cosmosAccountName')]",
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[format('rg-{0}', parameters('environmentName'))]",
       "location": "[parameters('location')]",
-      "kind": "GlobalDocumentDB",
-      "tags": {
-        "environment": "[parameters('environmentName')]"
-      },
+      "tags": "[variables('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "cosmopilot-resources",
+      "resourceGroup": "[format('rg-{0}', parameters('environmentName'))]",
       "properties": {
-        "databaseAccountOfferType": "Standard",
-        "enableFreeTier": false,
-        "consistencyPolicy": {
-          "defaultConsistencyLevel": "[parameters('consistencyLevel')]"
+        "expressionEvaluationOptions": {
+          "scope": "inner"
         },
-        "locations": [
-          {
-            "locationName": "[parameters('location')]",
-            "failoverPriority": 0,
-            "isZoneRedundant": false
-          }
-        ],
-        "publicNetworkAccess": "enabled",
-        "enableAutomaticFailover": false
-      }
-    },
-    {
-      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
-      "apiVersion": "2024-05-15",
-      "name": "[format('{0}/{1}', parameters('cosmosAccountName'), parameters('sqlDatabaseName'))]",
-      "properties": {
-        "resource": {
-          "id": "[parameters('sqlDatabaseName')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
-      "apiVersion": "2024-05-15",
-      "name": "[format('{0}/{1}/{2}', parameters('cosmosAccountName'), parameters('sqlDatabaseName'), parameters('containerName'))]",
-      "properties": {
-        "resource": {
-          "id": "[parameters('containerName')]",
-          "partitionKey": {
-            "paths": [
-              "[parameters('partitionKeyPath')]"
-            ],
-            "kind": "Hash"
+        "mode": "Incremental",
+        "parameters": {
+          "environmentName": {
+            "value": "[parameters('environmentName')]"
           },
-          "indexingPolicy": {
-            "indexingMode": "consistent",
-            "automatic": true,
-            "includedPaths": [
-              {
-                "path": "/*"
-              }
-            ],
-            "excludedPaths": [
-              {
-                "path": "/\"_etag\"/?"
-              }
-            ]
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "searchLocation": {
+            "value": "[parameters('searchLocation')]"
+          },
+          "resourceToken": {
+            "value": "[variables('resourceToken')]"
           }
         },
-        "options": {
-          "throughput": "[parameters('throughput')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosAccountName'), parameters('sqlDatabaseName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts",
-      "apiVersion": "2025-04-01-preview",
-      "name": "[variables('projectFullName')]",
-      "location": "[parameters('location')]",
-      "kind": "AIServices",
-      "identity": {
-        "type": "SystemAssigned"
-      },
-      "sku": {
-        "name": "S0"
-      },
-      "properties": {
-        "allowProjectManagement": true,
-        "customSubDomainName": "[variables('projectFullName')]",
-        "publicNetworkAccess": "[parameters('publicNetworkAccess')]"
-      },
-      "tags": {
-        "environment": "[variables('demoEnvironment')]"
-      }
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/projects",
-      "apiVersion": "2025-04-01-preview",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('projectFullName'))]",
-      "location": "[parameters('location')]",
-      "identity": {
-        "type": "SystemAssigned"
-      },
-      "properties": {},
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelDeploymentName'))]",
-      "sku": {
-        "name": "GlobalStandard",
-        "capacity": 50
-      },
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "[variables('modelType')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('embeddingDeploymentName'))]",
-      "sku": {
-        "name": "Standard",
-        "capacity": 1
-      },
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "[variables('embeddingModelType')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelRouterDeploymentName'))]",
-      "sku": {
-        "name": "GlobalStandard",
-        "capacity": 50
-      },
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "[variables('modelRouterModelType')]",
-          "version": "[variables('modelRouterModelVersion')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('embeddingDeploymentName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('gpt41DeploymentName'))]",
-      "sku": {
-        "name": "GlobalStandard",
-        "capacity": 50
-      },
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "[variables('gpt41ModelType')]",
-          "version": "[variables('gpt41ModelVersion')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelRouterDeploymentName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]",
-      "sku": {
-        "name": "GlobalStandard",
-        "capacity": 1
-      },
-      "properties": {
-        "model": {
-          "format": "Microsoft",
-          "name": "[variables('phiMiniReasoningModelType')]",
-          "version": "[variables('phiMiniReasoningModelVersion')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/deployments",
-      "apiVersion": "2024-10-01",
-      "name": "[format('{0}/{1}', variables('projectFullName'), variables('codexDeploymentName'))]",
-      "sku": {
-        "name": "GlobalStandard",
-        "capacity": 10
-      },
-      "properties": {
-        "model": {
-          "format": "OpenAI",
-          "name": "[variables('codexModelType')]",
-          "version": "[variables('codexModelVersion')]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Bing/accounts",
-      "apiVersion": "2025-05-01-preview",
-      "name": "[parameters('bingAccountName')]",
-      "location": "global",
-      "kind": "Bing.Grounding",
-      "sku": {
-        "name": "G1"
-      },
-      "tags": {
-        "environment": "[variables('demoEnvironment')]"
-      },
-      "properties": {}
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
-      "apiVersion": "2025-04-01-preview",
-      "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]",
-      "properties": {
-        "category": "GroundingWithBingSearch",
-        "target": "https://api.bing.microsoft.com/",
-        "authType": "ApiKey",
-        "isSharedToAll": true,
-        "credentials": {
-          "key": "[listKeys(resourceId('Microsoft.Bing/accounts', parameters('bingAccountName')), '2025-05-01-preview').key1]"
-        },
-        "metadata": {
-          "Type": "bing_grounding",
-          "ApiType": "Azure",
-          "ResourceId": "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]"
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]",
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Search/searchServices",
-      "apiVersion": "2024-06-01-preview",
-      "name": "[variables('searchFullName')]",
-      "location": "[parameters('searchLocation')]",
-      "sku": {
-        "name": "[parameters('searchServiceSku')]"
-      },
-      "identity": {
-        "type": "SystemAssigned"
-      },
-      "properties": {
-        "replicaCount": 1,
-        "partitionCount": 1,
-        "hostingMode": "default",
-        "publicNetworkAccess": "enabled",
-        "authOptions": {
-          "aadOrApiKey": {
-            "aadAuthFailureMode": "http401WithBearerChallenge"
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.5.1644",
+              "templateHash": "18229333509898426940"
+            }
+          },
+          "parameters": {
+            "environmentName": {
+              "type": "string",
+              "metadata": {
+                "description": "A short name for the environment, such as dev, test, or prod. This helps you keep deployments organized."
+              }
+            },
+            "location": {
+              "type": "string",
+              "allowedValues": [
+                "eastus2"
+              ],
+              "metadata": {
+                "description": "The Azure region where resources will be deployed. Locked to East US 2: it is the only region where every deployed model (model-router 2025-11-18, gpt-4.1, Phi-4-mini-reasoning, gpt-5.3-codex) AND every Foundry feature the project uses is available — including the full evaluation suite (risk & safety evaluators, Groundedness Pro, and Protected Material, which is East US 2-only)."
+              }
+            },
+            "resourceToken": {
+              "type": "string",
+              "metadata": {
+                "description": "A short unique token used to build globally-unique resource names (Cosmos DB account, Foundry project, Search service). Supplied by main.bicep."
+              }
+            },
+            "sqlDatabaseName": {
+              "type": "string",
+              "defaultValue": "cosmopilot",
+              "metadata": {
+                "description": "The SQL database name inside the Cosmos DB account. This is like a logical database for your app data."
+              }
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "conversations",
+              "metadata": {
+                "description": "The container name inside the SQL database. This is where your items will be stored."
+              }
+            },
+            "partitionKeyPath": {
+              "type": "string",
+              "defaultValue": "/tenantId",
+              "metadata": {
+                "description": "The partition key path for the container. This is the field Cosmos DB uses to spread data across partitions. Example: /tenantId"
+              }
+            },
+            "throughput": {
+              "type": "int",
+              "defaultValue": 400,
+              "metadata": {
+                "description": "The throughput for the container in request units per second (RU/s). A small value like 400 is fine for development."
+              }
+            },
+            "consistencyLevel": {
+              "type": "string",
+              "defaultValue": "Session",
+              "allowedValues": [
+                "BoundedStaleness",
+                "ConsistentPrefix",
+                "Session",
+                "Strong",
+                "Eventual"
+              ],
+              "metadata": {
+                "description": "The consistency level for the account. Session is a good default for most apps."
+              }
+            },
+            "projectName": {
+              "type": "string",
+              "defaultValue": "cosmopilot",
+              "metadata": {
+                "description": "Foundry Project name - must be globally unique"
+              }
+            },
+            "publicNetworkAccess": {
+              "type": "string",
+              "defaultValue": "Enabled",
+              "metadata": {
+                "description": "Project public network access"
+              }
+            },
+            "enableDataIsolation": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable data isolation for the project"
+              }
+            },
+            "bingAccountName": {
+              "type": "string",
+              "defaultValue": "bing-grounding",
+              "metadata": {
+                "description": "Name for the Grounding with Bing Search account. Must be unique within the resource group."
+              }
+            },
+            "searchServiceName": {
+              "type": "string",
+              "defaultValue": "cosmopilot-search",
+              "metadata": {
+                "description": "Name for the Azure AI Search service. Must be globally unique, 2-60 chars, lowercase letters, digits, and hyphens (no leading/trailing hyphen)."
+              }
+            },
+            "searchServiceSku": {
+              "type": "string",
+              "defaultValue": "basic",
+              "allowedValues": [
+                "free",
+                "basic",
+                "standard"
+              ],
+              "metadata": {
+                "description": "Azure AI Search SKU. Basic is a good default for a demo; free allows only one per subscription."
+              }
+            },
+            "searchIndexName": {
+              "type": "string",
+              "defaultValue": "knowledge-docs",
+              "metadata": {
+                "description": "Name of the search index that the knowledge-assistant queries."
+              }
+            },
+            "searchLocation": {
+              "type": "string",
+              "defaultValue": "[parameters('location')]",
+              "metadata": {
+                "description": "Region for the Azure AI Search service. Defaults to the main location; override if that region is out of Search capacity."
+              }
+            }
+          },
+          "variables": {
+            "uniqueSuffix": "[parameters('resourceToken')]",
+            "cosmosAccountName": "[format('cosmo-{0}', parameters('resourceToken'))]",
+            "projectFullName": "[format('{0}-{1}', parameters('projectName'), variables('uniqueSuffix'))]",
+            "demoEnvironment": "demo",
+            "modelDeploymentName": "gpt-4-1-nano",
+            "modelType": "gpt-4.1-nano",
+            "embeddingDeploymentName": "text-embedding-ada-002",
+            "embeddingModelType": "text-embedding-ada-002",
+            "searchFullName": "[format('{0}-{1}', parameters('searchServiceName'), variables('uniqueSuffix'))]",
+            "modelRouterDeploymentName": "model-router",
+            "modelRouterModelType": "model-router",
+            "modelRouterModelVersion": "2025-11-18",
+            "gpt41DeploymentName": "gpt-4.1",
+            "gpt41ModelType": "gpt-4.1",
+            "gpt41ModelVersion": "2025-04-14",
+            "phiMiniReasoningDeploymentName": "Phi-4-mini-reasoning",
+            "phiMiniReasoningModelType": "Phi-4-mini-reasoning",
+            "phiMiniReasoningModelVersion": "1",
+            "codexDeploymentName": "gpt-5-3-codex",
+            "codexModelType": "gpt-5.3-codex",
+            "codexModelVersion": "2026-02-24"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2024-05-15",
+              "name": "[variables('cosmosAccountName')]",
+              "location": "[parameters('location')]",
+              "kind": "GlobalDocumentDB",
+              "tags": {
+                "environment": "[parameters('environmentName')]"
+              },
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "enableFreeTier": false,
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "[parameters('consistencyLevel')]"
+                },
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
+                  }
+                ],
+                "publicNetworkAccess": "enabled",
+                "enableAutomaticFailover": false
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}', variables('cosmosAccountName'), parameters('sqlDatabaseName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[parameters('sqlDatabaseName')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', variables('cosmosAccountName'), parameters('sqlDatabaseName'), parameters('containerName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[parameters('containerName')]",
+                  "partitionKey": {
+                    "paths": [
+                      "[parameters('partitionKeyPath')]"
+                    ],
+                    "kind": "Hash"
+                  },
+                  "indexingPolicy": {
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [
+                      {
+                        "path": "/*"
+                      }
+                    ],
+                    "excludedPaths": [
+                      {
+                        "path": "/\"_etag\"/?"
+                      }
+                    ]
+                  }
+                },
+                "options": {
+                  "throughput": "[parameters('throughput')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', variables('cosmosAccountName'), parameters('sqlDatabaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[variables('projectFullName')]",
+              "location": "[parameters('location')]",
+              "kind": "AIServices",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "sku": {
+                "name": "S0"
+              },
+              "properties": {
+                "allowProjectManagement": true,
+                "customSubDomainName": "[variables('projectFullName')]",
+                "publicNetworkAccess": "[parameters('publicNetworkAccess')]"
+              },
+              "tags": {
+                "environment": "[variables('demoEnvironment')]"
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('projectFullName'))]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {},
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelDeploymentName'))]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": 50
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[variables('modelType')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('embeddingDeploymentName'))]",
+              "sku": {
+                "name": "Standard",
+                "capacity": 1
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[variables('embeddingModelType')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('modelRouterDeploymentName'))]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": 50
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[variables('modelRouterModelType')]",
+                  "version": "[variables('modelRouterModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('embeddingDeploymentName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('gpt41DeploymentName'))]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": 50
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[variables('gpt41ModelType')]",
+                  "version": "[variables('gpt41ModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelRouterDeploymentName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": 1
+              },
+              "properties": {
+                "model": {
+                  "format": "Microsoft",
+                  "name": "[variables('phiMiniReasoningModelType')]",
+                  "version": "[variables('phiMiniReasoningModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2024-10-01",
+              "name": "[format('{0}/{1}', variables('projectFullName'), variables('codexDeploymentName'))]",
+              "sku": {
+                "name": "GlobalStandard",
+                "capacity": 10
+              },
+              "properties": {
+                "model": {
+                  "format": "OpenAI",
+                  "name": "[variables('codexModelType')]",
+                  "version": "[variables('codexModelVersion')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Bing/accounts",
+              "apiVersion": "2025-05-01-preview",
+              "name": "[parameters('bingAccountName')]",
+              "location": "global",
+              "kind": "Bing.Grounding",
+              "sku": {
+                "name": "G1"
+              },
+              "tags": {
+                "environment": "[variables('demoEnvironment')]"
+              },
+              "properties": {}
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]",
+              "properties": {
+                "category": "GroundingWithBingSearch",
+                "target": "https://api.bing.microsoft.com/",
+                "authType": "ApiKey",
+                "isSharedToAll": true,
+                "credentials": {
+                  "key": "[listKeys(resourceId('Microsoft.Bing/accounts', parameters('bingAccountName')), '2025-05-01-preview').key1]"
+                },
+                "metadata": {
+                  "Type": "bing_grounding",
+                  "ApiType": "Azure",
+                  "ResourceId": "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Bing/accounts', parameters('bingAccountName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Search/searchServices",
+              "apiVersion": "2024-06-01-preview",
+              "name": "[variables('searchFullName')]",
+              "location": "[parameters('searchLocation')]",
+              "sku": {
+                "name": "[parameters('searchServiceSku')]"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "replicaCount": 1,
+                "partitionCount": 1,
+                "hostingMode": "default",
+                "publicNetworkAccess": "enabled",
+                "authOptions": {
+                  "aadOrApiKey": {
+                    "aadAuthFailureMode": "http401WithBearerChallenge"
+                  }
+                }
+              },
+              "tags": {
+                "environment": "[variables('demoEnvironment')]"
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'aisearch')]",
+              "properties": {
+                "category": "CognitiveSearch",
+                "target": "[format('https://{0}.search.windows.net', variables('searchFullName'))]",
+                "authType": "ApiKey",
+                "isSharedToAll": true,
+                "credentials": {
+                  "key": "[listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('searchFullName')), '2024-06-01-preview').primaryKey]"
+                },
+                "metadata": {
+                  "Type": "azure_ai_search",
+                  "ApiType": "Azure",
+                  "ResourceId": "[resourceId('Microsoft.Search/searchServices', variables('searchFullName'))]",
+                  "ApiVersion": "2024-07-01"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]",
+                "[resourceId('Microsoft.Search/searchServices', variables('searchFullName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-logs', variables('projectFullName'))]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              },
+              "tags": {
+                "environment": "[variables('demoEnvironment')]"
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[format('{0}-appi', variables('projectFullName'))]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('projectFullName')))]"
+              },
+              "tags": {
+                "environment": "[variables('demoEnvironment')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('projectFullName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects/connections",
+              "apiVersion": "2025-04-01-preview",
+              "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'appinsights')]",
+              "properties": {
+                "category": "AppInsights",
+                "target": "[resourceId('Microsoft.Insights/components', format('{0}-appi', variables('projectFullName')))]",
+                "authType": "ApiKey",
+                "isSharedToAll": true,
+                "credentials": {
+                  "key": "[reference(resourceId('Microsoft.Insights/components', format('{0}-appi', variables('projectFullName'))), '2020-02-02').ConnectionString]"
+                },
+                "metadata": {
+                  "ApiType": "Azure",
+                  "ResourceId": "[resourceId('Microsoft.Insights/components', format('{0}-appi', variables('projectFullName')))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/components', format('{0}-appi', variables('projectFullName')))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "cosmosAccountName": {
+              "type": "string",
+              "value": "[variables('cosmosAccountName')]"
+            },
+            "cosmosAccountEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', variables('cosmosAccountName')), '2024-05-15').documentEndpoint]"
+            },
+            "sqlDatabaseName": {
+              "type": "string",
+              "value": "[parameters('sqlDatabaseName')]"
+            },
+            "containerName": {
+              "type": "string",
+              "value": "[parameters('containerName')]"
+            },
+            "foundryResourceName": {
+              "type": "string",
+              "value": "[variables('projectFullName')]"
+            },
+            "foundryResourceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+            },
+            "foundryProjectName": {
+              "type": "string",
+              "value": "[variables('projectFullName')]"
+            },
+            "foundryProjectId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
+            },
+            "foundryProjectEndpoint": {
+              "type": "string",
+              "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', variables('projectFullName'), variables('projectFullName'))]"
+            },
+            "appInsightsName": {
+              "type": "string",
+              "value": "[format('{0}-appi', variables('projectFullName'))]"
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-appi', variables('projectFullName'))), '2020-02-02').ConnectionString]"
+            },
+            "modelDeploymentName": {
+              "type": "string",
+              "value": "[variables('modelDeploymentName')]"
+            },
+            "modelDeploymentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
+            },
+            "modelType": {
+              "type": "string",
+              "value": "[variables('modelType')]"
+            },
+            "embeddingDeploymentName": {
+              "type": "string",
+              "value": "[variables('embeddingDeploymentName')]"
+            },
+            "embeddingDeploymentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('embeddingDeploymentName'))]"
+            },
+            "embeddingModelType": {
+              "type": "string",
+              "value": "[variables('embeddingModelType')]"
+            },
+            "modelRouterDeploymentName": {
+              "type": "string",
+              "value": "[variables('modelRouterDeploymentName')]"
+            },
+            "modelRouterDeploymentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelRouterDeploymentName'))]"
+            },
+            "modelRouterModelType": {
+              "type": "string",
+              "value": "[variables('modelRouterModelType')]"
+            },
+            "gpt41DeploymentName": {
+              "type": "string",
+              "value": "[variables('gpt41DeploymentName')]"
+            },
+            "gpt41DeploymentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
+            },
+            "gpt41ModelType": {
+              "type": "string",
+              "value": "[variables('gpt41ModelType')]"
+            },
+            "phiMiniReasoningDeploymentName": {
+              "type": "string",
+              "value": "[variables('phiMiniReasoningDeploymentName')]"
+            },
+            "phiMiniReasoningDeploymentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]"
+            },
+            "phiMiniReasoningModelType": {
+              "type": "string",
+              "value": "[variables('phiMiniReasoningModelType')]"
+            },
+            "bingAccountName": {
+              "type": "string",
+              "value": "[parameters('bingAccountName')]"
+            },
+            "bingConnectionName": {
+              "type": "string",
+              "value": "binggrounding"
+            },
+            "bingConnectionId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]"
+            },
+            "searchServiceName": {
+              "type": "string",
+              "value": "[variables('searchFullName')]"
+            },
+            "searchServiceEndpoint": {
+              "type": "string",
+              "value": "[format('https://{0}.search.windows.net', variables('searchFullName'))]"
+            },
+            "searchConnectionName": {
+              "type": "string",
+              "value": "aisearch"
+            },
+            "searchConnectionId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'aisearch')]"
+            },
+            "searchIndexName": {
+              "type": "string",
+              "value": "[parameters('searchIndexName')]"
+            }
           }
         }
       },
-      "tags": {
-        "environment": "[variables('demoEnvironment')]"
-      }
-    },
-    {
-      "type": "Microsoft.CognitiveServices/accounts/projects/connections",
-      "apiVersion": "2025-04-01-preview",
-      "name": "[format('{0}/{1}/{2}', variables('projectFullName'), variables('projectFullName'), 'aisearch')]",
-      "properties": {
-        "category": "CognitiveSearch",
-        "target": "[format('https://{0}.search.windows.net', variables('searchFullName'))]",
-        "authType": "ApiKey",
-        "isSharedToAll": true,
-        "credentials": {
-          "key": "[listAdminKeys(resourceId('Microsoft.Search/searchServices', variables('searchFullName')), '2024-06-01-preview').primaryKey]"
-        },
-        "metadata": {
-          "Type": "azure_ai_search",
-          "ApiType": "Azure",
-          "ResourceId": "[resourceId('Microsoft.Search/searchServices', variables('searchFullName'))]",
-          "ApiVersion": "2024-07-01"
-        }
-      },
       "dependsOn": [
-        "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]",
-        "[resourceId('Microsoft.Search/searchServices', variables('searchFullName'))]"
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('rg-{0}', parameters('environmentName')))]"
       ]
     }
   ],
   "outputs": {
-    "cosmosAccountName": {
+    "AZURE_LOCATION": {
       "type": "string",
-      "value": "[parameters('cosmosAccountName')]"
+      "value": "[parameters('location')]"
     },
-    "cosmosAccountEndpoint": {
+    "AZURE_TENANT_ID": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2024-05-15').documentEndpoint]"
+      "value": "[tenant().tenantId]"
     },
-    "sqlDatabaseName": {
+    "AZURE_RESOURCE_GROUP": {
       "type": "string",
-      "value": "[parameters('sqlDatabaseName')]"
+      "value": "[format('rg-{0}', parameters('environmentName'))]"
     },
-    "containerName": {
+    "AZURE_AI_PROJECT_ENDPOINT": {
       "type": "string",
-      "value": "[parameters('containerName')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.foundryProjectEndpoint.value]"
     },
-    "foundryResourceName": {
+    "AZURE_AI_PROJECT_NAME": {
       "type": "string",
-      "value": "[variables('projectFullName')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.foundryProjectName.value]"
     },
-    "foundryResourceId": {
+    "AZURE_AI_FOUNDRY_RESOURCE_NAME": {
       "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts', variables('projectFullName'))]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.foundryResourceName.value]"
     },
-    "foundryProjectName": {
+    "AZURE_DEPLOYMENT_NAME": {
       "type": "string",
-      "value": "[variables('projectFullName')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.modelDeploymentName.value]"
     },
-    "foundryProjectId": {
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT": {
       "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects', variables('projectFullName'), variables('projectFullName'))]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.embeddingDeploymentName.value]"
     },
-    "foundryProjectEndpoint": {
+    "COSMOS_DB_ENDPOINT": {
       "type": "string",
-      "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', variables('projectFullName'), variables('projectFullName'))]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.cosmosAccountEndpoint.value]"
     },
-    "modelDeploymentName": {
+    "COSMOS_DB_DATABASE": {
       "type": "string",
-      "value": "[variables('modelDeploymentName')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.sqlDatabaseName.value]"
     },
-    "modelDeploymentId": {
+    "COSMOS_DB_CONTAINER": {
       "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelDeploymentName'))]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.containerName.value]"
     },
-    "modelType": {
+    "AZURE_AI_SEARCH_ENDPOINT": {
       "type": "string",
-      "value": "[variables('modelType')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.searchServiceEndpoint.value]"
     },
-    "embeddingDeploymentName": {
+    "AZURE_AI_SEARCH_CONNECTION_ID": {
       "type": "string",
-      "value": "[variables('embeddingDeploymentName')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.searchConnectionId.value]"
     },
-    "embeddingDeploymentId": {
+    "AZURE_AI_SEARCH_INDEX_NAME": {
       "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('embeddingDeploymentName'))]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.searchIndexName.value]"
     },
-    "embeddingModelType": {
+    "AZURE_BING_CONNECTION_ID": {
       "type": "string",
-      "value": "[variables('embeddingModelType')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.bingConnectionId.value]"
     },
-    "modelRouterDeploymentName": {
+    "AZURE_APPLICATION_INSIGHTS_NAME": {
       "type": "string",
-      "value": "[variables('modelRouterDeploymentName')]"
-    },
-    "modelRouterDeploymentId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('modelRouterDeploymentName'))]"
-    },
-    "modelRouterModelType": {
-      "type": "string",
-      "value": "[variables('modelRouterModelType')]"
-    },
-    "gpt41DeploymentName": {
-      "type": "string",
-      "value": "[variables('gpt41DeploymentName')]"
-    },
-    "gpt41DeploymentId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('gpt41DeploymentName'))]"
-    },
-    "gpt41ModelType": {
-      "type": "string",
-      "value": "[variables('gpt41ModelType')]"
-    },
-    "phiMiniReasoningDeploymentName": {
-      "type": "string",
-      "value": "[variables('phiMiniReasoningDeploymentName')]"
-    },
-    "phiMiniReasoningDeploymentId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/deployments', variables('projectFullName'), variables('phiMiniReasoningDeploymentName'))]"
-    },
-    "phiMiniReasoningModelType": {
-      "type": "string",
-      "value": "[variables('phiMiniReasoningModelType')]"
-    },
-    "bingAccountName": {
-      "type": "string",
-      "value": "[parameters('bingAccountName')]"
-    },
-    "bingConnectionName": {
-      "type": "string",
-      "value": "binggrounding"
-    },
-    "bingConnectionId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'binggrounding')]"
-    },
-    "searchServiceName": {
-      "type": "string",
-      "value": "[variables('searchFullName')]"
-    },
-    "searchServiceEndpoint": {
-      "type": "string",
-      "value": "[format('https://{0}.search.windows.net', variables('searchFullName'))]"
-    },
-    "searchConnectionName": {
-      "type": "string",
-      "value": "aisearch"
-    },
-    "searchConnectionId": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.CognitiveServices/accounts/projects/connections', variables('projectFullName'), variables('projectFullName'), 'aisearch')]"
-    },
-    "searchIndexName": {
-      "type": "string",
-      "value": "[parameters('searchIndexName')]"
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('rg-{0}', parameters('environmentName'))), 'Microsoft.Resources/deployments', 'cosmopilot-resources'), '2025-04-01').outputs.appInsightsName.value]"
     }
   }
 }

@@ -3,37 +3,13 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "environmentName": {
-      "value": "demo"
+      "value": "${AZURE_ENV_NAME}"
     },
     "location": {
-      "value": "eastus2"
+      "value": "${AZURE_LOCATION}"
     },
-    "cosmosAccountName": {
-      "value": "cosmopilot-db"
-    },
-    "sqlDatabaseName": {
-      "value": "cosmopilot"
-    },
-    "containerName": {
-      "value": "conversations"
-    },
-    "partitionKeyPath": {
-      "value": "/tenantId"
-    },
-    "throughput": {
-      "value": 400
-    },
-    "consistencyLevel": {
-      "value": "Session"
-    },
-    "projectName": {
-      "value": "cosmopilot"
-    },
-    "publicNetworkAccess": {
-      "value": "Enabled"
-    },
-    "enableDataIsolation": {
-      "value": false
+    "searchLocation": {
+      "value": "${AZURE_SEARCH_LOCATION}"
     }
   }
 }
