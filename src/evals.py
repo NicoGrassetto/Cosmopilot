@@ -1,7 +1,7 @@
-import csv
-import json
+# import csv
+# import json
 import os
-from typing import Any, cast
+# from typing import Any, cast
 
 # from azure.ai.evaluation import (
 #     BleuScoreEvaluator,
@@ -34,21 +34,21 @@ from typing import Any, cast
 # )
 
 # from azure.ai.evaluation import evaluate  # pyright: ignore
-# from azure.ai.projects import AIProjectClient
-# from azure.ai.projects.models import FileDatasetVersion
-# from azure.identity import DefaultAzureCredential
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import FileDatasetVersion
+from azure.identity import DefaultAzureCredential
 # from openai.types.eval_create_params import (
 #     DataSourceConfigCustom,
 #     DataSourceConfigLogs,
 #     TestingCriterionTextSimilarity,
 # )
 
-PREFIX = "cosmopilot"
+# PREFIX = "cosmopilot"
 
-DATASET_NAME = f"{PREFIX}-eval-dataset"
-# Dataset versions in Foundry are immutable, so CI overrides this per change
-# (e.g. with the commit SHA) to avoid version collisions on re-upload.
-DATASET_VERSION = os.environ.get("DATASET_VERSION", "1")
+# DATASET_NAME = f"{PREFIX}-eval-dataset"
+# # Dataset versions in Foundry are immutable, so CI overrides this per change
+# # (e.g. with the commit SHA) to avoid version collisions on re-upload.
+# DATASET_VERSION = os.environ.get("DATASET_VERSION", "1")
 
 # custom_data_source_config: DataSourceConfigCustom = {
 #     "type": "custom",
@@ -69,6 +69,21 @@ DATASET_VERSION = os.environ.get("DATASET_VERSION", "1")
 #         "usecase": "cosmos-assistant",
 #     },
 # }
+def upload_dataset(name: str, version: str, path: str) -> FileDatasetVersion:
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return client.datasets.upload_file(name=name, version=version, file_path=path)
+
+def list_datasets() -> list[FileDatasetVersion]:
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return list(client.datasets.list())
+
+def delete_dataset(name: str, version: str) -> None:
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    client.datasets.delete(name=name, version=version)
+
+def get_dataset(name: str, version: str) -> FileDatasetVersion:
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return client.datasets.get(name=name, version=version)
 
 # NOTE: The public OpenAI SDK type also lists "cosine", but the Azure Foundry
 # eval service rejects it (400 UserError), so it's intentionally excluded here.
