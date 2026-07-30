@@ -37,6 +37,7 @@ import os
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import FileDatasetVersion
 from azure.identity import DefaultAzureCredential
+from azure.ai.projects.models import TestingCriterionAzureAIEvaluator
 # from openai.types.eval_create_params import (
 #     DataSourceConfigCustom,
 #     DataSourceConfigLogs,
@@ -84,6 +85,22 @@ def delete_dataset(name: str, version: str) -> None:
 def get_dataset(name: str, version: str) -> FileDatasetVersion:
     client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
     return client.datasets.get(name=name, version=version)
+
+def register_eval(name: str, data_source_config: dict, testing_criteria: list):
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return client.get_openai_client().evals.create(name=name, data_source_config=data_source_config, testing_criteria=testing_criteria)
+
+def list_evals():
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return list(client.get_openai_client().evals.list())
+
+def delete_eval(eval_id: str):
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return client.get_openai_client().evals.delete(eval_id=eval_id)
+
+def get_eval(eval_id: str):
+    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
+    return client.get_openai_client().evals.retrieve(eval_id=eval_id)
 
 # NOTE: The public OpenAI SDK type also lists "cosine", but the Azure Foundry
 # eval service rejects it (400 UserError), so it's intentionally excluded here.
