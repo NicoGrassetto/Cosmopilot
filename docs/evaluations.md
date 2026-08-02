@@ -182,6 +182,8 @@ and whether it's in **preview** and/or **portal-only**.
 
 ---
 
+For PR, merge, scheduled, release, and production evaluation policy, see [Evaluation Lifecycle](EVALUATION_LIFECYCLE.md).
+
 ## How to run evaluations
 
 - **Foundry portal wizard** — no-code: [Evaluate a generative AI app](https://learn.microsoft.com/en-us/azure/foundry/how-to/evaluate-generative-ai-app). Also runs live in the **agents playground** (enabled by default, consumption-billed).
