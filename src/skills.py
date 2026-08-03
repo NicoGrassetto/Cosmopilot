@@ -1,15 +1,3 @@
-"""Register local ``SKILL.md`` skills with the Foundry project (preview Skills API).
-
-Discovers every ``agents/<agent>/skills/<skill>/SKILL.md`` in this repo and uploads
-it as a versioned Foundry skill, promoting each new version to the default.
-
-Env vars:
-    AZURE_AI_PROJECT_ENDPOINT   Foundry project endpoint
-
-Auth: DefaultAzureCredential (run ``az login`` first).
-Skills API: https://learn.microsoft.com/azure/foundry/agents/how-to/tools/skills
-"""
-
 from __future__ import annotations
 
 import io
@@ -19,41 +7,219 @@ import zipfile
 from pathlib import Path
 
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import (
+    CreateSkillVersionFromFilesBody,
+    DeleteSkillResult,
+    DeleteSkillVersionResult,
+    SkillDetails,
+    SkillInlineContent,
+    SkillVersion,
+)
 from azure.identity import DefaultAzureCredential
+
+from agents.agent import Agent
 
 logger = logging.getLogger(__name__)
 
+def register_all() -> list[SkillVersion]:
+    versions = []
 
-def create() -> None:
-    """Discover and register every local skill as a versioned Foundry skill."""
-    endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
+    for skill_md in sorted(
+        (Path(__file__).parent / "agents").glob("*/skills/*/SKILL.md")
+    ):
+        versions.append(
+            create_from_files(
+                name=skill_md.parent.name,
+                skill_directory=skill_md.parent,
+            )
+        )
+
+    return versions
+
+def create(name: str, description: str, instructions: str) -> SkillVersion:
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        return client.beta.skills.create(
+            name=name,
+            inline_content=SkillInlineContent(
+                description=description,
+                instructions=instructions,
+            ),
+        )
+
+def get(name: str, version: str | None = None) -> SkillDetails | SkillVersion:
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        if version is not None:
+            return client.beta.skills.get_version(name=name, version=version)
+
+        return client.beta.skills.get(name=name)
+
+def list_skills(
+    *,
+    limit: int | None = None,
+    order: str | None = None,
+    before: str | None = None,
+) -> list[SkillDetails]:
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        return [
+            skill
+            for skill in client.beta.skills.list(
+                limit=limit,
+                order=order,
+                before=before,
+            )
+        ]
+
+def list_versions(
+    name: str,
+    *,
+    limit: int | None = None,
+    order: str | None = None,
+    before: str | None = None,
+) -> list[SkillVersion]:
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        return [
+            version
+            for version in client.beta.skills.list_versions(
+                name=name,
+                limit=limit,
+                order=order,
+                before=before,
+            )
+        ]
+
+def update(name:str, version: str):
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        return client.beta.skills.update(name=name, default_version=version)
+
+def delete(name: str, version: str | None = None) -> DeleteSkillResult | DeleteSkillVersionResult:
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        if version is not None:
+            return client.beta.skills.delete_version(
+                name=name,
+                version=version,
+            )
+
+        return client.beta.skills.delete(name=name)
+    
+def download(
+    name: str,
+    output_path: str | Path,
+    *,
+    version: str | None = None,
+) -> Path:
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with (
         DefaultAzureCredential() as credential,
-        AIProjectClient(endpoint=endpoint, credential=credential, allow_preview=True) as project,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
     ):
-        for skill_md in sorted((Path(__file__).parent / "agents").glob("*/skills/*/SKILL.md")):
-            name = skill_md.parent.name  # directory name == SKILL.md front-matter `name`
+        if version is not None:
+            content = client.beta.skills.download_version(name=name, version=version)
+        else:
+            content = client.beta.skills.download(name=name)
 
-            # Zip the skill folder in memory (SKILL.md + any sibling assets); the server
-            # parses the front matter to populate the version description and instructions.
-            buffer = io.BytesIO()
-            with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-                for file in sorted(skill_md.parent.rglob("*")):
-                    if file.is_file():
-                        archive.write(file, file.relative_to(skill_md.parent))
+        output_path.write_bytes(b"".join(content))
 
-            try:
-                version = project.beta.skills.create(name=name, file=buffer.getvalue())
-                project.beta.skills.update(name, default_version=version.version)
-                logger.info("Registered skill %s (version=%s)", version.name, version.version)
-            except Exception:  # noqa: BLE001 - keep registering the rest of the batch
-                logger.exception("Failed to register skill %s", name)
+    return output_path
 
+def create_from_files(
+    name: str,
+    skill_directory: str | Path,
+    *,
+    make_default: bool = True,
+) -> SkillVersion:
+    skill_directory = Path(skill_directory)
+
+    if not (skill_directory / "SKILL.md").is_file():
+        raise FileNotFoundError(
+            f"Missing SKILL.md in {skill_directory}"
+        )
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for file_path in sorted(skill_directory.rglob("*")):
+            if file_path.is_file():
+                archive.write(
+                    file_path,
+                    file_path.relative_to(skill_directory),
+                )
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        version = client.beta.skills.create_from_files(
+            name=name,
+            content=CreateSkillVersionFromFilesBody(
+                files=[
+                    (
+                        f"{name}.zip",
+                        buffer.getvalue(),
+                        "application/zip",
+                    )
+                ]
+            ),
+        )
+
+        if make_default:
+            client.beta.skills.update(
+                name=name,
+                default_version=version.version,
+            )
+
+    return version
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    commands = parser.add_subparsers(dest="command", required=True)
 
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
     )
-    create()
+
+# This is meant to be used by as a command or to be ran at the data plane as a post provision hook -> 
