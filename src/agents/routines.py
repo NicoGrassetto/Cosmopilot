@@ -5,10 +5,6 @@ from azure.core.exceptions import ResourceNotFoundError
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects.models import RoutineAction
-from azure.ai.projects.models import (
-    InvokeAgentResponsesApiRoutineAction,
-    ScheduleRoutineTrigger,
-)
 
 def create(routine_name: str, description: str, enabled: bool, triggers: dict, action: RoutineAction):
     client = AIProjectClient(
@@ -48,7 +44,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
 
-    # commands.add_parser("create")
     # commands.add_parser("update").add_argument("routine_name")
     commands.add_parser("get").add_argument("routine_name")
     commands.add_parser("list")
@@ -65,12 +60,6 @@ def main() -> None:
         credential=DefaultAzureCredential(),
         allow_preview=True,
     )
-
-    # if args.command == "create":
-    #     create()
-
-    # elif args.command == "update":
-    #     update()
 
     if args.command == "get":
         client.beta.routines.get(routine_name=args.routine_name)

@@ -1,22 +1,3 @@
-"""Create the HR prompt agent in Azure AI Foundry.
-
-Prompt-based agent whose system prompt is loaded from a .txt file in ./prompts.
-Tools: file_search (ground answers in HR policy docs) + code_interpreter
-(compute leave balances, proration, dates) + bing_grounding (live public web
-results via Grounding with Bing Search) + function (get_pto_balance, executed
-client-side by the run() loop in src/agent.py).
-
-Env vars:
-    AZURE_AI_PROJECT_ENDPOINT   Foundry project endpoint
-    AZURE_DEPLOYMENT_NAME       Chat model deployment (e.g. gpt-4-1-nano)
-    VECTOR_STORE_ID             Vector store id with HR policy documents
-    AZURE_BING_CONNECTION_ID    Foundry connection id for Grounding with Bing Search
-
-Auth: DefaultAzureCredential (run `az login` first).
-Note: file_search requires the vector store to exist in the project;
-bing_grounding requires the Bing connection (AZURE_BING_CONNECTION_ID).
-"""
-
 from __future__ import annotations
 
 import logging

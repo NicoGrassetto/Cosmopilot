@@ -24,49 +24,39 @@ Cosmopilot is a demo showcasing Microsoft Foundry as your AI platform choice. Th
 
 ```text
 Cosmopilot/
-├── src/                    # Application code
-│   ├── agents/             # Microsoft Foundry agents (one folder per agent)
-│   │   ├── browser-assistant/
-│   │   ├── deep-research-assistant/
-│   │   ├── devops-assistant/
-│   │   ├── hr-agent/
-│   │   ├── insights-assistant/
-│   │   ├── integration-assistant/
-│   │   ├── knowledge-assistant/
-│   │   ├── orchestrator-assistant/
-│   │   └── research-assistant/
-│   └── main.py             # Entry point
-├── frontend/               # Lightweight Svelte frontend
+├── backend/                # FastAPI bridge to Microsoft Foundry
+│   ├── app.py
+│   └── requirements.txt
+├── frontend/               # React application powered by Vite
+│   └── src/
+│       ├── components/
+│       ├── api.js
+│       └── App.jsx
+├── src/
+│   ├── agents/             # Foundry agent definitions and shared helpers
+│   │   ├── eu-resilience-agent/
+│   │   ├── trail-guide-agent/
+│   │   ├── weather-agent/
+│   │   ├── agent.py
+│   │   └── routines.py
+│   ├── evaluations/        # Evaluation, scheduling, and insight workflows
+│   │   ├── eu-resilience-agent-evaluations/
+│   │   ├── trail-guide-agent-evaluations/
+│   │   └── weather-agent-evaluations/
+│   └── skills.py
+├── data/
+│   ├── datasets/           # Evaluation datasets and results
+│   └── documents/          # Sample grounding documents
+├── docs/                   # Tool and evaluation documentation
 ├── infra/                  # Bicep templates and deployment scripts
-├── data/                   # Sample documents and evaluation datasets
-│   ├── datasets/           # Evaluation datasets (uploaded to Foundry)
-│   └── documents/          # Fake docs indexed into Azure AI Search
-├── docs/                   # Tool catalog, evaluations, and roadmaps
 ├── notebooks/              # Exploratory notebooks
-├── tests/                  # Evaluation runner and tests
-├── assets/                 # Images used in docs
-└── requirements.txt        # Python dependencies
+├── assets/                 # Documentation images
+├── azure.yaml              # Azure Developer CLI configuration
+└── requirements.txt        # Shared Python dependencies
 ```
 
 ---
 
-## Roadmap
-
-Foundry moves fast. These are capabilities I plan to fold into Cosmopilot next to keep it a living tour of the platform (GA and Preview):
-
-- **Serverless agents runtime (Azure Functions)** — a markdown-first programming model for building event-driven AI agents as a first-class Azure Functions workload, with triggers (HTTP, timer, queue, Cosmos DB, Teams, Outlook, …), MCP tools/connectors, sandboxed execution, and scale-to-zero Flex Consumption hosting. An agent is a single `.agent.md` file plus a trigger.
-  - Announcement: [Introducing the Azure Functions serverless agents runtime (preview)](https://techcommunity.microsoft.com/blog/appsonazureblog/introducing-the-azure-functions-serverless-agents-runtime-preview/4523804)
-  - Serverless Agent Framework: [serverless-agent-framework](https://serverless-agent-framework-guaxabfdfvh7ekdh.eastus-01.azurewebsites.net/saf)
-  - Docs: [Serverless agents runtime in Azure Functions](https://learn.microsoft.com/en-us/azure/azure-functions/functions-serverless-agents-runtime)
-
-- **Workflows** — orchestrate complex, multi-step or multi-agent processes with branching, parallel execution, and human-in-the-loop approvals, going beyond a single trigger-and-action.
-  - Docs: [Workflows in the Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/overview)
-  - Repo: [microsoft/agent-framework](https://github.com/microsoft/agent-framework)
-
-- **Routines** — simple, project-native automation that triggers an agent on a timer or recurring (CRON) schedule for things like daily summaries and periodic checks, all managed inside the Foundry project.
-  - Docs: [Automate agents with routines (preview)](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/routines)
-
----
 
 ## License
 
