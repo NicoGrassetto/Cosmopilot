@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import argparse
 import os
 import zipfile
 from pathlib import Path
@@ -216,6 +217,29 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
 
+    commands.add_parser("create").add_argument("name")
+    commands.add_parser("create").add_argument("description")
+    commands.add_parser("create").add_argument("instructions")
+
+    commands.add_parser("get").add_argument("name")
+    commands.add_parser("get").add_argument("version", nargs="?", default=None)
+
+    commands.add_parser("list-skills").add_argument("name")
+    commands.add_parser("list-skills").add_argument("name")
+#  list_command.add_argument("limit", nargs="?", type=int, default=None)
+#     list_command.add_argument("order", nargs="?", default=None)
+#     list_command.add_argument("before", nargs="?", default=None)
+
+
+    args = parser.parse_args()
+
+    if args.command == "create":
+        pass
+    elif args.command == "get":
+        pass
+    elif args.command == "list-skills":
+        pas
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
@@ -223,3 +247,40 @@ if __name__ == "__main__":
     )
 
 # This is meant to be used by as a command or to be ran at the data plane as a post provision hook -> 
+
+
+# commands.add_parser("get").add_argument("routine_name")
+#     commands.add_parser("list")
+#     commands.add_parser("delete").add_argument("routine_name")
+
+
+#     args = parser.parse_args()
+
+#     client = AIProjectClient(
+#         endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+#         credential=DefaultAzureCredential(),
+#         allow_preview=True,
+#     )
+
+#     if args.command == "get":
+#         client.beta.routines.get(routine_name=args.routine_name)
+
+#     elif args.command == "list":
+#         for routine in client.beta.routines.list():
+#             print(routine)
+
+#     elif args.command == "delete":
+#         client.beta.routines.delete(routine_name=args.routine_name)
+
+#     elif args.command == "disable":
+#         client.beta.routines.disable(routine_name=args.routine_name)
+
+#     elif args.command == "enable":
+#         client.beta.routines.enable(routine_name=args.routine_name)
+
+#     elif args.command == "dispatch":
+#         print(client.beta.routines.dispatch(routine_name=args.routine_name))
+
+#     elif args.command == "list-runs":
+#         for run in client.beta.routines.list_runs(routine_name=args.routine_name):
+#             print(run)

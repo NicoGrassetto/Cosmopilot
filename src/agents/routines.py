@@ -20,6 +20,7 @@ def create(routine_name: str, description: str, enabled: bool, triggers: dict, a
         triggers=triggers,
         action=action
     )
+    
 def update(routine_name: str, description: str, enabled: bool,triggers: dict, action: RoutineAction):
     client = AIProjectClient(
         endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
