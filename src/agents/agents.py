@@ -386,6 +386,7 @@ def main() -> None:
     )
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--allow-preview", action="store_true")
     commands = parser.add_subparsers(dest="command", required=True)
 
     get_command = commands.add_parser("get-agent")
