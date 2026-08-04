@@ -151,6 +151,234 @@ def list_agents(
         )
         return result
 
+def get_agent_version(
+    agent_name: str,
+    agent_version: str,
+    *,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> models.AgentVersionDetails:
+    started = perf_counter()
+    logger.info(
+        "Getting agent version name=%s version=%s",
+        agent_name,
+        agent_version,
+    )
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        result = client.agents.get_version(
+            agent_name=agent_name,
+            agent_version=agent_version,
+            **kwargs,
+        )
+        logger.info(
+            "Retrieved agent version name=%s version=%s duration_ms=%.0f",
+            result.name,
+            result.version,
+            (perf_counter() - started) * 1000,
+        )
+        return result
+
+def list_agent_versions(
+    agent_name: str,
+    *,
+    limit: int | None = None,
+    order: str | models.PageOrder | None = None,
+    before: str | None = None,
+    include_drafts: bool | None = None,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> list[models.AgentVersionDetails]:
+    started = perf_counter()
+    logger.info("Listing agent versions name=%s", agent_name)
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        result = list(
+            client.agents.list_versions(
+                agent_name=agent_name,
+                limit=limit,
+                order=order,
+                before=before,
+                include_drafts=include_drafts,
+                **kwargs,
+            )
+        )
+        logger.info(
+            "Listed agent versions name=%s count=%d duration_ms=%.0f",
+            agent_name,
+            len(result),
+            (perf_counter() - started) * 1000,
+        )
+        return result
+
+def update_agent_details(
+    agent_name: str,
+    *,
+    content_type: str = "application/merge-patch+json",
+    agent_endpoint: models.AgentEndpointConfig | None = None,
+    agent_card: models.AgentCard | None = None,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> models.AgentDetails:
+    started = perf_counter()
+    logger.info("Updating agent details name=%s", agent_name)
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        result = client.agents.update_details(
+            agent_name=agent_name,
+            content_type=content_type,
+            agent_endpoint=agent_endpoint,
+            agent_card=agent_card,
+            **kwargs,
+        )
+        logger.info(
+            "Updated agent details name=%s state=%s duration_ms=%.0f",
+            result.name,
+            result.state,
+            (perf_counter() - started) * 1000,
+        )
+        return result
+
+def enable_agent(
+    agent_name: str,
+    *,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> None:
+    started = perf_counter()
+    logger.info("Enabling agent name=%s", agent_name)
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        client.agents.enable(agent_name=agent_name, **kwargs)
+        logger.info(
+            "Enabled agent name=%s duration_ms=%.0f",
+            agent_name,
+            (perf_counter() - started) * 1000,
+        )
+
+def disable_agent(
+    agent_name: str,
+    *,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> None:
+    started = perf_counter()
+    logger.info("Disabling agent name=%s", agent_name)
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        client.agents.disable(agent_name=agent_name, **kwargs)
+        logger.info(
+            "Disabled agent name=%s duration_ms=%.0f",
+            agent_name,
+            (perf_counter() - started) * 1000,
+        )
+
+
+def delete_agent(
+    agent_name: str,
+    *,
+    force: bool | None = None,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> models.DeleteAgentResponse:
+    started = perf_counter()
+    logger.info("Deleting agent name=%s force=%s", agent_name, force)
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        result = client.agents.delete(
+            agent_name=agent_name,
+            force=force,
+            **kwargs,
+        )
+        logger.info(
+            "Deleted agent name=%s deleted=%s duration_ms=%.0f",
+            agent_name,
+            result.deleted,
+            (perf_counter() - started) * 1000,
+        )
+        return result
+
+def delete_agent_version(
+    agent_name: str,
+    agent_version: str,
+    *,
+    force: bool | None = None,
+    allow_preview: bool = False,
+    **kwargs: Any,
+) -> models.DeleteAgentVersionResponse:
+    started = perf_counter()
+    logger.info(
+        "Deleting agent version name=%s version=%s force=%s",
+        agent_name,
+        agent_version,
+        force,
+    )
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+            allow_preview=allow_preview,
+        ) as client,
+    ):
+        result = client.agents.delete_version(
+            agent_name=agent_name,
+            agent_version=agent_version,
+            force=force,
+            **kwargs,
+        )
+        logger.info(
+            "Deleted agent version name=%s version=%s deleted=%s duration_ms=%.0f",
+            agent_name,
+            agent_version,
+            result.deleted,
+            (perf_counter() - started) * 1000,
+        )
+        return result
+
 def main() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -187,12 +415,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# Versions	get_version	Read one exact version.
-# Versions	list_versions	List versions of one agent.
-# Endpoint	update_details	Change endpoint routing, protocols, or the agent card.
-# Endpoint	enable	Allow new requests and sessions.
-# Endpoint	disable	Stop accepting new requests and sessions.
-# Delete	delete	Delete an agent and its versions.
-# Delete	delete_version	Delete one version.
