@@ -238,7 +238,7 @@ def main() -> None:
     elif args.command == "get":
         pass
     elif args.command == "list-skills":
-        pas
+        pass
 
 if __name__ == "__main__":
     logging.basicConfig(
