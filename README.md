@@ -45,8 +45,18 @@ Cosmopilot/
 │   │   └── weather-agent-evaluations/
 │   └── skills.py
 ├── data/
-│   ├── datasets/           # Evaluation datasets and results
-│   └── documents/          # Sample grounding documents
+│   ├── eu_resilience/
+│   │   ├── datasets/       # Evaluation datasets and results
+│   │   └── documents/      # Source and grounding documents
+│   ├── knowledge_assistant/
+│   │   ├── datasets/
+│   │   └── documents/
+│   ├── trail_guide/
+│   │   ├── datasets/
+│   │   └── documents/
+│   └── weather/
+│       ├── datasets/
+│       └── documents/
 ├── docs/                   # Tool and evaluation documentation
 ├── infra/                  # Bicep templates and deployment scripts
 ├── notebooks/              # Exploratory notebooks

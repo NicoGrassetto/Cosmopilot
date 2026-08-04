@@ -3,7 +3,7 @@
 #
 # Reads outputs from the main deployment, then:
 #   * creates a demo vector store (research-assistant file_search),
-#   * creates the Azure AI Search index and loads data/documents (knowledge-assistant),
+#   * creates the Azure AI Search index and loads data/knowledge_assistant/documents,
 #   * creates the Foundry memory store (knowledge-assistant memory_search),
 # and prints the env vars needed to register the agents.
 #
@@ -49,7 +49,7 @@ echo "Creating demo vector store and uploading fake documents..."
 VECTOR_STORE_LINE="$(python3 "$PROVISION_PY" | tail -n 1)"
 FILE_SEARCH_VECTOR_STORE_ID="${VECTOR_STORE_LINE#FILE_SEARCH_VECTOR_STORE_ID=}"
 
-echo "Creating Azure AI Search index and loading data/documents..."
+echo "Creating Azure AI Search index and loading data/knowledge_assistant/documents..."
 SEARCH_ADMIN_KEY="$(az search admin-key show \
   --resource-group "$RESOURCE_GROUP" \
   --service-name "$SEARCH_SERVICE_NAME" \

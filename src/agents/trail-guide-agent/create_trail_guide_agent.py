@@ -18,7 +18,7 @@ from azure.ai.projects.models import (
 # Make the shared ``agent`` module (src/agent.py) importable when this script is
 # run directly (src/ is two levels above this agent's folder).
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from agents.agent import create  # noqa: E402  (import needs the sys.path setup above)
+from agents.agents_old import create  # noqa: E402  (import needs the sys.path setup above)
 
 # --- Foundry Skills (preview) helpers -----------------------------------------
 # Inlined from the former shared ``skills_util`` module so each agent script is

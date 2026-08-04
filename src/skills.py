@@ -18,7 +18,7 @@ from azure.ai.projects.models import (
 )
 from azure.identity import DefaultAzureCredential
 
-from agents.agent import Agent
+from agents.agents_old import Agent
 
 logger = logging.getLogger(__name__)
 

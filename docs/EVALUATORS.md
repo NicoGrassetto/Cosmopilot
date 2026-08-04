@@ -657,7 +657,7 @@ evaluators = {
 }
 
 result = evaluate(
-    data="data/datasets/eval_dataset.jsonl",
+    data="data/<scenario>/datasets/eval_dataset.jsonl",
     evaluators=evaluators,
     evaluation_name="cosmopilot-local-quality",
     azure_ai_project=os.environ.get("AZURE_AI_PROJECT_ENDPOINT"),
@@ -675,14 +675,14 @@ def citation_required(response: str) -> dict[str, float]:
     return {"citation_required": float("source:" in response.lower())}
 
 result = evaluate(
-    data="data/datasets/eval_dataset.jsonl",
+    data="data/<scenario>/datasets/eval_dataset.jsonl",
     evaluators={"citation_required": citation_required},
     evaluator_config={
         "citation_required": {
             "column_mapping": {"response": "${data.response}"},
         },
     },
-    output_path="data/datasets/eval_results/citation-check.json",
+    output_path="data/<scenario>/datasets/eval_results/citation-check.json",
 )
 ```
 
