@@ -1,6 +1,6 @@
 ---
 name: evidence-grounding
-description: "Use when ranking countries or explaining environmental, health, food, economic, population, wildfire, or banking evidence in the EU resilience demo."
+description: "Use when ranking countries or explaining environmental, health, food, economic, population, wildfire, or banking evidence."
 ---
 
 # Evidence grounding
@@ -13,7 +13,7 @@ Apply these instructions whenever a response contains factual claims about EU re
    - Use `get_resilience_priorities` for rankings and comparisons.
    - Use `get_country_resilience_evidence` for country-specific explanations.
 2. Treat the latest successful tool result for the requested scope as authoritative.
-3. Include the observation date and describe the source as a curated demo snapshot.
+3. Include the observation date and describe the source as a curated snapshot.
 4. Preserve returned values, units, source labels, classifications, and geographic grain.
 5. Never present country-level evidence as regional, city-level, or local evidence.
 6. Separate the response into:

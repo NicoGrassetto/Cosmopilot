@@ -11,7 +11,6 @@ Apply these instructions whenever synthetic, modeled, derived, or stress-scenari
 
 - **Source-derived**: a value reproduced or transformed directly from an identified source dataset.
 - **Derived**: a score, ranking, aggregation, or interpretation calculated from other values.
-- **Synthetic**: a generated record or estimate created for the demo rather than an observed real-world entity or measurement.
 - **Scenario**: a hypothetical adverse condition used to explore possible effects, not a prediction.
 
 Use the classification returned by the evidence tool. Do not reclassify a value based on model judgment.
@@ -29,8 +28,8 @@ Use the classification returned by the evidence tool. Do not reclassify a value 
 
 Use concise language such as:
 
-- "The banking overlay is synthetic and is used only to demonstrate the coordination workflow."
+- "The banking overlay is used only to demonstrate the coordination workflow."
 - "This is an adverse stress-test scenario, not a forecast."
-- "The overall score is a derived demo indicator based on the underlying country-level signals."
+- "The overall score is a derived indicator based on the underlying country-level signals."
 
 Place the disclosure next to the conclusion it qualifies or in a clearly visible limitations section. Do not bury it in technical detail.
