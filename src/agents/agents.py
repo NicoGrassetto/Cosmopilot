@@ -394,6 +394,29 @@ def main() -> None:
     list_command = commands.add_parser("list-agents")
     list_command.add_argument("-k", "--kind", choices=("prompt", "hosted", "workflow", "external"),)
 
+    list_command.add_argument("--limit", type=int)
+    list_command.add_argument("--order", choices=("asc", "desc"))
+    list_command.add_argument("--before")
+
+    get_version_command = commands.add_parser("get-agent-version")
+    get_version_command.add_argument("-n", "--agent-name", required=True)
+    get_version_command.add_argument("-v", "--agent-version", required=True)
+
+    list_versions_command = commands.add_parser("list-agent-versions")
+    list_versions_command.add_argument("-n", "--agent-name", required=True)
+
+    enable_command = commands.add_parser("enable-agent")
+    enable_command.add_argument("-n", "--agent-name", required=True)
+
+    disable_command = commands.add_parser("disable-agent")
+    disable_command.add_argument("-n", "--agent-name", required=True)
+
+    delete_command = commands.add_parser("delete-agent")
+    delete_command.add_argument("-n", "--agent-name", required=True)
+
+    delete_version_command = commands.add_parser("delete-agent-version")
+    delete_version_command.add_argument("-n", "--agent-name", required=True)
+
     args = parser.parse_args()
 
     try:
