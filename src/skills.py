@@ -286,3 +286,40 @@ if __name__ == "__main__":
 #     elif args.command == "list-runs":
 #         for run in client.beta.routines.list_runs(routine_name=args.routine_name):
 #             print(run)
+
+
+
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--allow-preview", action="store_true")
+#     commands = parser.add_subparsers(dest="command", required=True)
+
+#     get_command = commands.add_parser("get-agent")
+#     get_command.add_argument("-n", "--agent-name", required=True)
+
+#     list_command = commands.add_parser("list-agents")
+#     list_command.add_argument("-k", "--kind", choices=("prompt", "hosted", "workflow", "external"),)
+
+#     list_command.add_argument("--limit", type=int)
+#     list_command.add_argument("--order", choices=("asc", "desc"))
+#     list_command.add_argument("--before")
+
+#     get_version_command = commands.add_parser("get-agent-version")
+#     get_version_command.add_argument("-n", "--agent-name", required=True)
+#     get_version_command.add_argument("-v", "--agent-version", required=True)
+
+#     list_versions_command = commands.add_parser("list-agent-versions")
+#     list_versions_command.add_argument("-n", "--agent-name", required=True)
+
+#     enable_command = commands.add_parser("enable-agent")
+#     enable_command.add_argument("-n", "--agent-name", required=True)
+
+#     disable_command = commands.add_parser("disable-agent")
+#     disable_command.add_argument("-n", "--agent-name", required=True)
+
+#     delete_command = commands.add_parser("delete-agent")
+#     delete_command.add_argument("-n", "--agent-name", required=True)
+
+#     delete_version_command = commands.add_parser("delete-agent-version")
+#     delete_version_command.add_argument("-n", "--agent-name", required=True)
+
+#     args = parser.parse_args()
