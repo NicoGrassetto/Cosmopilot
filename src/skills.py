@@ -246,6 +246,8 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
     )
 
+    parser = argparse.ArgumentParser(description="Manage Microsoft Foundry skills.")
+    commands = parser.add_subparsers(dest="command", required=True)
 # This is meant to be used by as a command or to be ran at the data plane as a post provision hook -> 
 
 
