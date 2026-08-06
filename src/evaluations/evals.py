@@ -14,21 +14,7 @@ from azure.ai.evaluation.simulator import (
 
 SimulationTarget = Callable[..., Awaitable[dict[str, Any]]]
 
-def upload_dataset(name: str, version: str, path: str) -> FileDatasetVersion:
-    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
-    return client.datasets.upload_file(name=name, version=version, file_path=path)
 
-def list_datasets() -> list[FileDatasetVersion]:
-    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
-    return list(client.datasets.list())
-
-def delete_dataset(name: str, version: str) -> None:
-    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
-    client.datasets.delete(name=name, version=version)
-
-def get_dataset(name: str, version: str) -> FileDatasetVersion:
-    client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
-    return client.datasets.get(name=name, version=version)
 
 def register_eval(name: str, data_source_config: dict, testing_criteria: list):
     client = AIProjectClient(endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"], credential=DefaultAzureCredential())
