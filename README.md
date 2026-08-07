@@ -94,7 +94,7 @@ Create the virtual environment and install dependencies once from the repository
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt -r backend/requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 For each new terminal session, activate the existing environment:
