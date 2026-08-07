@@ -1,12 +1,9 @@
-import os
-
-from azure.ai.projects import AIProjectClient
-from azure.identity import DefaultAzureCre
-from agents.routines import create
 from azure.ai.projects.models import (
     InvokeAgentResponsesApiRoutineAction,
     ScheduleRoutineTrigger,
 )
+
+from agents.routines import create
 
 def main() -> None:
     create(
