@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,8 @@ from azure.ai.projects.models import DataGenerationJob, DataGenerationJobResult,
 from azure.core.polling import LROPoller
 from azure.ai.projects.models import FileDatasetVersion
 from azure.identity import DefaultAzureCredential
-from fastapi import logger
+
+logger = logging.getLogger(__name__)
 
 
 def create_generation_job(

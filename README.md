@@ -89,10 +89,10 @@ This repository uses Azure Developer CLI to provision infrastructure only.
 
 ## Local Development
 
-Create the virtual environment and install dependencies once from the repository root:
+Python 3.10 or newer is required; Python 3.12 is recommended. Create the virtual environment and install dependencies once from the repository root:
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
