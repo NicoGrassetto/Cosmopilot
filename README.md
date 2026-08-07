@@ -87,6 +87,26 @@ This repository uses Azure Developer CLI to provision infrastructure only.
 
 ---
 
+## Local Development
+
+Create the virtual environment and install dependencies once from the repository root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r backend/requirements.txt
+```
+
+For each new terminal session, activate the existing environment:
+
+```bash
+source .venv/bin/activate
+```
+
+Dependencies remain installed in `.venv`; reinstall them only when a requirements file changes.
+
+---
+
 
 ## License
 
