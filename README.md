@@ -67,6 +67,26 @@ Cosmopilot/
 
 ---
 
+## Deploy
+
+This repository uses Azure Developer CLI to provision infrastructure only.
+
+1. Sign in to Azure:
+
+  ```bash
+  azd auth login
+  ```
+
+2. From the repository root, provision the infrastructure:
+
+  ```bash
+  azd up
+  ```
+
+3. Follow the prompts to select an Azure subscription, name the environment, and choose the Azure AI Search region.
+
+---
+
 
 ## License
 
