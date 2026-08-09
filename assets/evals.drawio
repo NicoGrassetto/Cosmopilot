@@ -60,13 +60,13 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="17" value="When overall perf b3elow threshold -&amp;gt; creat an alerts + optimisation job" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="190" y="640" width="150" height="150" as="geometry"/>
+                    <mxGeometry x="300" y="660" width="150" height="150" as="geometry"/>
                 </mxCell>
                 <mxCell id="18" value="Scheduled weekly evcal batches for regression" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="502.5" y="555" width="145" height="60" as="geometry"/>
+                    <mxGeometry x="540" y="570" width="145" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="19" value="Red teamign" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="465" y="750" width="145" height="60" as="geometry"/>
+                    <mxGeometry x="490" y="705" width="145" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
