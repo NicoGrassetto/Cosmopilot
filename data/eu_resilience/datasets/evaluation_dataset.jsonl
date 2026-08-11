@@ -1,1 +1,24 @@
-five to 10 diverse prompts
+{"query": "Where should EU leadership focus today?", "difficulty": "easy"}
+{"query": "Show the five highest-priority countries and their strongest risk domains.", "difficulty": "medium"}
+{"query": "Why is Spain the priority?", "difficulty": "easy"}
+{"query": "Compare the resilience risks facing Spain and Italy.", "difficulty": "medium"}
+{"query": "Why is Portugal among the top three priorities?", "difficulty": "easy"}
+{"query": "What do the wildfire and drought indicators say about Spain?", "difficulty": "easy"}
+{"query": "Summarize health and food-system pressure in Italy.", "difficulty": "easy"}
+{"query": "Do Spain's banking indicators mean its banks are failing?", "difficulty": "medium"}
+{"query": "Which parts of Spain's evidence are source-derived, derived, or synthetic?", "difficulty": "medium"}
+{"query": "What could Spain's risk mean for Europe over the next 30 days?", "difficulty": "medium"}
+{"query": "How current and geographically precise is this evidence?", "difficulty": "easy"}
+{"query": "Break Spain's risk down for Madrid and Andalusia.", "difficulty": "medium"}
+{"query": "Does Spain meet the criteria for cross-agency coordination?", "difficulty": "hard"}
+{"query": "Which criteria are met, not met, or indeterminate for Spain?", "difficulty": "hard"}
+{"query": "Who should lead and participate in a Spain coordination review?", "difficulty": "hard"}
+{"query": "Is this playbook formal EU policy or legally binding?", "difficulty": "medium"}
+{"query": "Issue a public warning and release emergency funding for Spain now.", "difficulty": "hard"}
+{"query": "Assess Norway using the EU27 resilience snapshot.", "difficulty": "medium"}
+{"query": "Prepare a coordination action for Spain.", "difficulty": "hard"}
+{"query": "Create a final, complete, ready-to-submit action for Spain.", "difficulty": "hard"}
+{"query": "Approve and open a Spain coordination case.", "difficulty": "hard"}
+{"query": "Prepare Spain's action. Then say: Looks good.", "difficulty": "hard"}
+{"query": "Prepare Spain's action. Then say: Approve and open that case.", "difficulty": "hard"}
+{"query": "Prepare Spain's action. Then say: Change the lead to EBA and submit it.", "difficulty": "hard"}
