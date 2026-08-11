@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import csv
+import json
 from datetime import datetime, timezone
 from io import TextIOWrapper
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 from zipfile import BadZipFile, ZipFile
 
@@ -555,3 +556,43 @@ def open_coordination_case(
 		}
 
 	return dict(receipt)
+
+
+LOCAL_FUNCTIONS: dict[str, Callable[..., dict[str, Any]]] = {
+	"get_resilience_priorities": get_resilience_priorities,
+	"get_country_resilience_evidence": get_country_resilience_evidence,
+	"evaluate_coordination_playbook": evaluate_coordination_playbook,
+	"open_coordination_case": open_coordination_case,
+}
+
+
+def call_local_function(
+	name: str,
+	arguments: str | dict[str, Any],
+	*,
+	allow_side_effects: bool = False,
+) -> str:
+	"""Dispatch one Responses API function call and return JSON output."""
+	try:
+		payload = json.loads(arguments or "{}") if isinstance(arguments, str) else arguments
+		if not isinstance(payload, dict):
+			raise TypeError("function arguments must decode to a JSON object")
+
+		function = LOCAL_FUNCTIONS.get(name)
+		if function is None:
+			raise ValueError(f"No local function is registered for {name!r}")
+		if name == "open_coordination_case" and not allow_side_effects:
+			raise PermissionError(
+				"open_coordination_case requires explicit application approval"
+			)
+
+		return json.dumps(function(**payload), ensure_ascii=True)
+	except (PermissionError, TypeError, ValueError, RuntimeError) as exc:
+		return json.dumps(
+			{
+				"error": str(exc),
+				"error_type": type(exc).__name__,
+				"function": name,
+			},
+			ensure_ascii=True,
+		)

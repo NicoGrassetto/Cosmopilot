@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#123f8c">
+    <meta name="description" content="EU resilience coordination workspace">
+    <title>EU Resilience Desk</title>
+    <link rel="icon" href="/assets/globe-2.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="topbar">
+            <button
+                class="icon-button mobile-only"
+                id="openNavigation"
+                type="button"
+                aria-label="Open workspace navigation"
+                aria-controls="navigationPanel"
+                aria-expanded="false"
+                title="Workspace navigation"
+            >
+                <img src="/assets/panel-left.svg" alt="" aria-hidden="true">
+            </button>
+
+            <a class="brand" href="/" aria-label="EU Resilience Desk home">
+                <span class="brand-mark" aria-hidden="true">
+                    <img src="/assets/globe-2.svg" alt="">
+                </span>
+                <span>
+                    <strong>EU Resilience Desk</strong>
+                    <small>Cross-agency coordination</small>
+                </span>
+            </a>
+
+            <div class="topbar-context" aria-label="Environment">
+                <span>EU27 demo</span>
+                <span class="divider" aria-hidden="true"></span>
+                <span id="connectionStatus" class="connection-status" data-state="checking">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    Checking service
+                </span>
+            </div>
+
+            <button
+                class="icon-button mobile-only"
+                id="openControls"
+                type="button"
+                aria-label="Open decision controls"
+                aria-controls="controlsPanel"
+                aria-expanded="false"
+                title="Decision controls"
+            >
+                <img src="/assets/sliders-horizontal.svg" alt="" aria-hidden="true">
+            </button>
+        </header>
+
+        <div class="workspace">
+            <aside class="navigation-panel" id="navigationPanel" aria-label="Workspace navigation">
+                <div class="panel-heading">
+                    <span class="eyebrow">Workspace</span>
+                    <button class="icon-button mobile-close" type="button" data-close-panels aria-label="Close navigation">
+                        <img src="/assets/x.svg" alt="" aria-hidden="true">
+                    </button>
+                </div>
+
+                <nav class="primary-navigation" aria-label="Primary">
+                    <a href="/" aria-current="page">
+                        <img src="/assets/message-square-text.svg" alt="" aria-hidden="true">
+                        <span>Coordination desk</span>
+                    </a>
+                </nav>
+
+                <section class="navigation-section" aria-labelledby="briefingPromptsTitle">
+                    <h2 id="briefingPromptsTitle">Briefing prompts</h2>
+                    <div class="prompt-list">
+                        <button type="button" data-prompt="Rank the five highest-priority countries and summarize the strongest risk drivers.">
+                            <span>Priority scan</span>
+                            <small>Top five countries</small>
+                            <img src="/assets/arrow-up-right.svg" alt="" aria-hidden="true">
+                        </button>
+                        <button type="button" data-prompt="Assess Spain's current resilience evidence and explain the four strongest drivers.">
+                            <span>Country evidence</span>
+                            <small>Spain snapshot</small>
+                            <img src="/assets/arrow-up-right.svg" alt="" aria-hidden="true">
+                        </button>
+                        <button type="button" data-prompt="Evaluate the coordination playbook for Spain and prepare a pending decision card if eligible.">
+                            <span>Decision review</span>
+                            <small>Spain playbook</small>
+                            <img src="/assets/arrow-up-right.svg" alt="" aria-hidden="true">
+                        </button>
+                    </div>
+                </section>
+
+                <figure class="snapshot-figure">
+                    <img src="/assets/europe-night.jpg" alt="Satellite composite showing Europe at night">
+                    <figcaption>
+                        <span>Geographic context</span>
+                        <small>NASA Black Marble composite</small>
+                    </figcaption>
+                </figure>
+            </aside>
+
+            <main class="conversation-panel">
+                <header class="conversation-heading">
+                    <div>
+                        <span class="eyebrow">Active workspace</span>
+                        <h1>Coordination desk</h1>
+                    </div>
+                    <dl class="snapshot-meta" aria-label="Evidence snapshot metadata">
+                        <div>
+                            <dt>Observed</dt>
+                            <dd>22 Jul 2026</dd>
+                        </div>
+                        <div>
+                            <dt>Grain</dt>
+                            <dd>Country</dd>
+                        </div>
+                    </dl>
+                </header>
+
+                <div class="service-banner" id="serviceBanner" role="status" hidden>
+                    <img src="/assets/triangle-alert.svg" alt="" aria-hidden="true">
+                    <span id="serviceBannerText"></span>
+                </div>
+
+                <section
+                    class="message-stream"
+                    id="messageStream"
+                    aria-label="Conversation"
+                    aria-live="polite"
+                ></section>
+
+                <div class="typing-indicator" id="typingIndicator" aria-label="Agent is working" hidden>
+                    <span></span><span></span><span></span>
+                    <small>Reviewing governed evidence</small>
+                </div>
+
+                <footer class="composer-wrap">
+                    <form class="composer" id="composer">
+                        <label class="sr-only" for="messageInput">Message the EU resilience agent</label>
+                        <textarea
+                            id="messageInput"
+                            name="message"
+                            rows="1"
+                            maxlength="8000"
+                            placeholder="Ask about priorities, country evidence, or a coordination decision..."
+                            autocomplete="off"
+                            required
+                        ></textarea>
+                        <button class="send-button" id="sendButton" type="submit" aria-label="Send message" title="Send message">
+                            <img src="/assets/send.svg" alt="" aria-hidden="true">
+                        </button>
+                    </form>
+                    <div class="composer-notice">
+                        <img src="/assets/database.svg" alt="" aria-hidden="true">
+                        Static EU27 demo snapshot with disclosed synthetic overlays
+                    </div>
+                </footer>
+            </main>
+
+            <aside class="controls-panel" id="controlsPanel" aria-label="Decision controls">
+                <div class="panel-heading">
+                    <span class="eyebrow">Decision controls</span>
+                    <button class="icon-button mobile-close" type="button" data-close-panels aria-label="Close controls">
+                        <img src="/assets/x.svg" alt="" aria-hidden="true">
+                    </button>
+                </div>
+
+                <section class="control-section session-section" aria-labelledby="sessionTitle">
+                    <div class="section-title-row">
+                        <div>
+                            <h2 id="sessionTitle">Session</h2>
+                            <p id="sessionLabel">New review</p>
+                        </div>
+                        <button class="icon-button" id="resetSession" type="button" aria-label="Start a new review" title="Start a new review">
+                            <img src="/assets/rotate-ccw.svg" alt="" aria-hidden="true">
+                        </button>
+                    </div>
+                    <div class="session-state">
+                        <span class="status-dot status-dot-green" aria-hidden="true"></span>
+                        Context retained for this browser tab
+                    </div>
+                </section>
+
+                <section class="control-section approval-section" id="approvalSection" aria-labelledby="approvalTitle" data-state="idle">
+                    <div class="approval-icon" aria-hidden="true">
+                        <img src="/assets/shield-check.svg" alt="">
+                    </div>
+                    <div>
+                        <span class="eyebrow">Human approval</span>
+                        <h2 id="approvalTitle">No decision pending</h2>
+                        <p id="approvalDescription">A reviewed decision card is required before a case can be opened.</p>
+                    </div>
+
+                    <label class="approval-check" id="approvalCheckLabel">
+                        <input id="approvalCheck" type="checkbox" disabled>
+                        <span>I reviewed the country, evidence package, agencies, and proposed steps.</span>
+                    </label>
+                    <button class="approval-button" id="approveButton" type="button" disabled>
+                        <img src="/assets/check-circle-2.svg" alt="" aria-hidden="true">
+                        Approve and open case
+                    </button>
+                </section>
+
+                <section class="control-section" aria-labelledby="evidenceContractTitle">
+                    <h2 id="evidenceContractTitle">Evidence contract</h2>
+                    <ul class="evidence-key">
+                        <li><span class="key-mark observed"></span><span>Source-derived observations</span></li>
+                        <li><span class="key-mark derived"></span><span>Derived risk indicators</span></li>
+                        <li><span class="key-mark synthetic"></span><span>Synthetic demo overlays</span></li>
+                    </ul>
+                </section>
+
+                <section class="control-section boundary-section" aria-labelledby="boundaryTitle">
+                    <img src="/assets/lock-keyhole.svg" alt="" aria-hidden="true">
+                    <div>
+                        <h2 id="boundaryTitle">Execution boundary</h2>
+                        <p>Internal coordination review only. No public warning, funding, or emergency action.</p>
+                    </div>
+                </section>
+            </aside>
+        </div>
+        <div class="panel-backdrop" id="panelBackdrop" hidden></div>
+    </div>
+
+    <template id="messageTemplate">
+        <article class="message">
+            <header>
+                <span class="message-author"></span>
+                <time></time>
+            </header>
+            <div class="message-content"></div>
+        </article>
+    </template>
+</body>
+</html>
