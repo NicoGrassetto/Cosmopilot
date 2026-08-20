@@ -2,7 +2,7 @@
 import os
 
 from evaluations.datasets import upload_dataset
-from evaluations import rules
+from evaluations import red_teaming, rules
 
 from azure.identity import DefaultAzureCredential
 
@@ -16,6 +16,13 @@ from azure.ai.projects.models import (
 from azure.ai.projects.models import (
         AzureAIDataSourceConfig,
         TestingCriterionAzureAIEvaluator,
+)
+
+from azure.ai.projects.models import (
+    AttackStrategy,
+    AzureOpenAIModelConfiguration,
+    RedTeam,
+    RiskCategory,
 )
 
 def main() -> None:
@@ -114,14 +121,38 @@ def main() -> None:
     )
 
     print(created_rule)
-    
+
     ##############################################
     ########## SCHEDULE STUFF (offline) ##########
     ##############################################
-
+    
     #######################################
     ########## RED TEAMING STUFF ##########
     #######################################
+    created_red_team = red_teaming.create(
+        red_team=RedTeam(
+            display_name="Trail Guide jailbreak and multi-turn scan",
+            target=AzureOpenAIModelConfiguration(
+                model_deployment_name=os.environ["AZURE_DEPLOYMENT_NAME"],
+            ),
+            num_turns=3,
+            attack_strategies=[
+                AttackStrategy.JAILBREAK,
+                AttackStrategy.MULTI_TURN,
+            ],
+            risk_categories=[
+                RiskCategory.HATE_UNFAIRNESS,
+                RiskCategory.VIOLENCE,
+                RiskCategory.SELF_HARM,
+            ],
+            application_scenario=(
+                "An AI trail guide that recommends hiking routes "
+                "and answers questions about outdoor safety."
+            ),
+            simulation_only=False,
+        )
+    )
 
+    print(created_red_team)
 if __name__ == "__main__":
     main()
