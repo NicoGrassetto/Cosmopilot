@@ -3,6 +3,7 @@
 const APPROVAL_MESSAGE = "Approve and open the coordination case exactly as shown in the pending decision card.";
 const STORAGE_KEY = "eu-resilience-desk-state-v1";
 const INITIAL_MESSAGE = "EU27 resilience snapshot ready. Which country or priority set should we review?";
+const DOCUMENT_PATH_PATTERN = /^\/api\/documents\/[0-9a-f]{32}$/;
 
 const messageStream = document.querySelector("#messageStream");
 const messageTemplate = document.querySelector("#messageTemplate");
@@ -10,6 +11,11 @@ const composer = document.querySelector("#composer");
 const messageInput = document.querySelector("#messageInput");
 const sendButton = document.querySelector("#sendButton");
 const typingIndicator = document.querySelector("#typingIndicator");
+const typingStatusText = document.querySelector("#typingStatusText");
+const agentActivity = document.querySelector("#agentActivity");
+const activityState = document.querySelector("#activityState");
+const activityTitle = document.querySelector("#activityTitle");
+const activitySteps = document.querySelector("#activitySteps");
 const connectionStatus = document.querySelector("#connectionStatus");
 const connectionStatusText = connectionStatus.querySelector(".status-text");
 const serviceBanner = document.querySelector("#serviceBanner");
@@ -34,6 +40,7 @@ let state = {
     approvalComplete: false,
 };
 let requestInFlight = false;
+let activityEntries = [];
 
 try {
     const storedState = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "null");
@@ -151,6 +158,61 @@ function renderAssistantContent(container, content) {
     }
 }
 
+function renderDocumentCards(container, documents) {
+    if (!Array.isArray(documents)) {
+        return;
+    }
+
+    for (const documentMetadata of documents) {
+        if (
+            !documentMetadata
+            || typeof documentMetadata.downloadUrl !== "string"
+            || !DOCUMENT_PATH_PATTERN.test(documentMetadata.downloadUrl)
+        ) {
+            continue;
+        }
+
+        const card = document.createElement("article");
+        card.className = "document-card";
+
+        const iconWrap = document.createElement("div");
+        iconWrap.className = "document-card-icon";
+        iconWrap.setAttribute("aria-hidden", "true");
+        const icon = document.createElement("img");
+        icon.src = "/assets/database.svg";
+        icon.alt = "";
+        iconWrap.append(icon);
+
+        const details = document.createElement("div");
+        const title = document.createElement("h4");
+        title.textContent = typeof documentMetadata.title === "string"
+            ? documentMetadata.title
+            : "EU resilience briefing";
+        const metadata = document.createElement("p");
+        const scope = documentMetadata.scope === "eu_priorities" ? "EU27 priorities" : "Country briefing";
+        const chartCount = Number.isInteger(documentMetadata.chartCount)
+            ? `${documentMetadata.chartCount} charts`
+            : "Chart pack";
+        metadata.textContent = `${scope} · ${chartCount} · DOCX`;
+        details.append(title, metadata);
+
+        const download = document.createElement("a");
+        download.className = "document-download";
+        download.href = documentMetadata.downloadUrl;
+        if (typeof documentMetadata.fileName === "string") {
+            download.download = documentMetadata.fileName;
+        }
+        const downloadIcon = document.createElement("img");
+        downloadIcon.src = "/assets/arrow-up-right.svg";
+        downloadIcon.alt = "";
+        downloadIcon.setAttribute("aria-hidden", "true");
+        download.append(downloadIcon, document.createTextNode("Download DOCX"));
+
+        card.append(iconWrap, details, download);
+        container.append(card);
+    }
+}
+
 function renderMessages() {
     messageStream.replaceChildren();
     for (const message of state.messages) {
@@ -159,6 +221,7 @@ function renderMessages() {
         const author = fragment.querySelector(".message-author");
         const time = fragment.querySelector("time");
         const content = fragment.querySelector(".message-content");
+        const documents = fragment.querySelector(".message-documents");
 
         article.dataset.role = message.role;
         author.textContent = message.role === "user" ? "You" : message.role === "error" ? "Service" : "Resilience agent";
@@ -168,12 +231,126 @@ function renderMessages() {
 
         if (message.role === "assistant") {
             renderAssistantContent(content, message.content);
+            renderDocumentCards(documents, message.documents);
         } else {
             content.textContent = message.content;
         }
         messageStream.append(fragment);
     }
     messageStream.scrollTop = messageStream.scrollHeight;
+}
+
+function renderActivity() {
+    activitySteps.replaceChildren();
+    for (const entry of activityEntries.slice(-5)) {
+        const item = document.createElement("li");
+        item.dataset.state = entry.state;
+        item.textContent = entry.message;
+        activitySteps.append(item);
+    }
+}
+
+function startActivity() {
+    activityEntries = [];
+    agentActivity.hidden = false;
+    agentActivity.dataset.state = "working";
+    activityState.textContent = "Agent working";
+    activityTitle.textContent = "Starting the governed workflow";
+    typingStatusText.textContent = "Starting governed workflow";
+    renderActivity();
+}
+
+function updateActivity(message, state = "working") {
+    if (typeof message !== "string" || !message) {
+        return;
+    }
+    agentActivity.hidden = false;
+    agentActivity.dataset.state = state === "error" ? "error" : "working";
+    activityState.textContent = state === "error" ? "Attention required" : "Live agent activity";
+    activityTitle.textContent = message;
+    typingStatusText.textContent = message;
+    const previous = activityEntries.at(-1);
+    if (!previous || previous.message !== message) {
+        activityEntries.push({ message, state });
+        renderActivity();
+    } else {
+        previous.state = state;
+        renderActivity();
+    }
+}
+
+function finishActivity(success, message) {
+    agentActivity.hidden = false;
+    agentActivity.dataset.state = success ? "complete" : "error";
+    activityState.textContent = success ? "Completed" : "Request failed";
+    activityTitle.textContent = message;
+    typingStatusText.textContent = message;
+}
+
+function handleAgentEvent(event) {
+    if (!event || typeof event.type !== "string") {
+        return null;
+    }
+    if (event.type === "status" || event.type === "tool_start") {
+        updateActivity(event.message, "working");
+    } else if (event.type === "tool_complete") {
+        updateActivity(event.message, event.success === false ? "error" : "complete");
+    } else if (event.type === "document") {
+        updateActivity(event.message || "Downloadable document ready", "complete");
+    } else if (event.type === "error") {
+        throw new Error(event.detail || event.error || "The agent request failed.");
+    } else if (event.type === "result") {
+        return event;
+    }
+    return null;
+}
+
+async function readAgentEventStream(response) {
+    if (!response.body) {
+        throw new Error("This browser cannot read live agent progress.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result = null;
+
+    while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+            if (!line.trim()) {
+                continue;
+            }
+            let event;
+            try {
+                event = JSON.parse(line);
+            } catch {
+                throw new Error("The live agent progress stream was malformed.");
+            }
+            result = handleAgentEvent(event) || result;
+        }
+        if (done) {
+            break;
+        }
+    }
+
+    if (buffer.trim()) {
+        try {
+            result = handleAgentEvent(JSON.parse(buffer)) || result;
+        } catch (error) {
+            if (error instanceof SyntaxError) {
+                throw new Error("The live agent progress stream was incomplete.");
+            }
+            throw error;
+        }
+    }
+    if (!result) {
+        throw new Error("The agent stream ended before returning a response.");
+    }
+    return result;
 }
 
 function updateApprovalState() {
@@ -252,9 +429,10 @@ async function sendMessage(message, approveCoordinationCase = false) {
     persistState();
     renderMessages();
     setBusy(true);
+    startActivity();
 
     try {
-        const response = await fetch("/api/chat", {
+        const response = await fetch("/api/chat/stream", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -263,15 +441,17 @@ async function sendMessage(message, approveCoordinationCase = false) {
                 approveCoordinationCase,
             }),
         });
-        const payload = await response.json();
         if (!response.ok) {
+            const payload = await response.json();
             throw new Error(payload.detail || payload.error || "Agent request failed.");
         }
+        const payload = await readAgentEventStream(response);
 
         state.sessionId = payload.sessionId;
         state.messages.push({
             role: "assistant",
             content: payload.message,
+            documents: Array.isArray(payload.documents) ? payload.documents : [],
             time: new Date().toISOString(),
         });
         state.messages = state.messages.slice(-40);
@@ -282,12 +462,14 @@ async function sendMessage(message, approveCoordinationCase = false) {
         persistState();
         renderMessages();
         updateApprovalState();
+        finishActivity(true, "Response and requested deliverables are ready");
     } catch (error) {
         const messageText = error instanceof Error ? error.message : "The agent request failed.";
         state.messages.push({ role: "error", content: messageText, time: new Date().toISOString() });
         persistState();
         renderMessages();
         showServiceError(messageText);
+        finishActivity(false, messageText);
     } finally {
         setBusy(false);
         messageInput.focus();
@@ -368,6 +550,8 @@ resetSessionButton.addEventListener("click", async () => {
     renderMessages();
     updateApprovalState();
     clearServiceError();
+    agentActivity.hidden = true;
+    activityEntries = [];
     if (previousSessionId) {
         try {
             await fetch("/api/session/reset", {

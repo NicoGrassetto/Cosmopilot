@@ -47,3 +47,9 @@ Apply these instructions to all business-facing responses from the EU Cross-Agen
 
 - For preparation, display a compact decision card ending with **Status: Pending approval**.
 - For execution, display only the returned business receipt and any material warning or failure.
+
+### Document deliverable
+
+- Generate a document only when the user requests a report, DOCX, export, or formal briefing.
+- Ground the document in a current country evidence package or priority ranking from the matching evidence tool.
+- Confirm only the document scope and successful generation status returned by the report tool; do not invent file or download details.

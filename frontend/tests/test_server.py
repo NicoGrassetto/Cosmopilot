@@ -99,6 +99,22 @@ def post_json(url, payload):
         return response.status, json.load(response)
 
 
+def post_stream(url, payload):
+    request = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urlopen(request) as response:
+        events = [
+            json.loads(line)
+            for raw_line in response
+            if (line := raw_line.decode("utf-8").strip())
+        ]
+        return response.status, events
+
+
 def test_serves_workspace_and_health(monkeypatch):
     with running_server(monkeypatch, []) as (base_url, _):
         with urlopen(f"{base_url}/") as response:
@@ -178,6 +194,183 @@ def test_dispatches_local_function_and_retains_response_context(monkeypatch):
     assert openai.calls[1]["previous_response_id"] == "response-1"
     assert openai.calls[2]["previous_response_id"] == "response-2"
     assert openai.closed is True
+
+
+def test_streams_function_progress_and_result(monkeypatch):
+    function_calls = []
+    monkeypatch.setattr(
+        server,
+        "call_local_function",
+        lambda name, arguments, **kwargs: function_calls.append(name)
+        or '{"returned_country_count": 3}',
+    )
+    responses = [
+        SimpleNamespace(
+            id="response-1",
+            output=[
+                SimpleNamespace(
+                    type="function_call",
+                    name="get_resilience_priorities",
+                    arguments='{"limit": 3}',
+                    call_id="call-1",
+                )
+            ],
+            output_text="",
+        ),
+        SimpleNamespace(
+            id="response-2",
+            output=[],
+            output_text="The priority ranking is ready.",
+        ),
+    ]
+
+    with running_server(monkeypatch, responses) as (base_url, _):
+        status, events = post_stream(
+            f"{base_url}/api/chat/stream",
+            {"message": "Rank three countries"},
+        )
+
+    assert status == 200
+    assert function_calls == ["get_resilience_priorities"]
+    assert [event["type"] for event in events] == [
+        "status",
+        "status",
+        "status",
+        "tool_start",
+        "tool_complete",
+        "status",
+        "status",
+        "result",
+    ]
+    assert events[3]["message"] == "Reading the EU27 priority scorecard"
+    assert events[-1]["message"] == "The priority ranking is ready."
+    assert events[-1]["documents"] == []
+
+
+def test_streams_generated_document_metadata(monkeypatch):
+    document_id = "a" * 32
+    monkeypatch.setattr(
+        server,
+        "call_local_function",
+        lambda *args, **kwargs: json.dumps(
+            {
+                "status": "generated",
+                "document": {
+                    "id": document_id,
+                    "title": "Spain resilience decision briefing",
+                    "file_name": "spain-briefing.docx",
+                    "download_url": f"/api/documents/{document_id}",
+                    "content_type": (
+                        "application/vnd.openxmlformats-officedocument."
+                        "wordprocessingml.document"
+                    ),
+                    "scope": "country",
+                    "generated_at": "2026-08-24T09:00:00Z",
+                    "snapshot_date": "2026-07-22",
+                    "chart_count": 2,
+                },
+            }
+        ),
+    )
+    responses = [
+        SimpleNamespace(
+            id="response-1",
+            output=[
+                SimpleNamespace(
+                    type="function_call",
+                    name="generate_resilience_report",
+                    arguments=(
+                        '{"report_type":"country","country":"Spain",'
+                        '"limit":null}'
+                    ),
+                    call_id="call-1",
+                )
+            ],
+            output_text="",
+        ),
+        SimpleNamespace(
+            id="response-2",
+            output=[],
+            output_text=(
+                "Use the download link below: "
+                f"[Download](sandbox:/api/documents/{document_id})."
+            ),
+        ),
+    ]
+
+    with running_server(monkeypatch, responses) as (base_url, _):
+        _, events = post_stream(
+            f"{base_url}/api/chat/stream",
+            {"message": "Create a Spain DOCX briefing"},
+        )
+
+    document_event = next(
+        event for event in events if event["type"] == "document"
+    )
+    result = events[-1]
+    assert document_event["document"]["downloadUrl"] == (
+        f"/api/documents/{document_id}"
+    )
+    assert document_event["document"]["chartCount"] == 2
+    assert result["documents"] == [document_event["document"]]
+    assert "sandbox:" not in result["message"]
+    assert "/api/documents/" not in result["message"]
+    assert "use the download card below" in result["message"]
+
+
+def test_downloads_registered_document(monkeypatch, tmp_path):
+    document_path = tmp_path / "spain-briefing.docx"
+    document_path.write_bytes(b"docx-test-content")
+    monkeypatch.setattr(
+        server,
+        "get_generated_document",
+        lambda document_id: SimpleNamespace(
+            path=document_path,
+            file_name="spain-briefing.docx",
+            content_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+        )
+        if document_id == "b" * 32
+        else None,
+    )
+
+    with running_server(monkeypatch, []) as (base_url, _):
+        with urlopen(f"{base_url}/api/documents/{'b' * 32}") as response:
+            body = response.read()
+            content_type = response.headers["Content-Type"]
+            disposition = response.headers["Content-Disposition"]
+
+    assert body == b"docx-test-content"
+    assert content_type.startswith(
+        "application/vnd.openxmlformats-officedocument"
+    )
+    assert disposition == 'attachment; filename="spain-briefing.docx"'
+
+
+def test_expired_document_returns_not_found(monkeypatch, tmp_path):
+    missing_path = tmp_path / "expired.docx"
+    monkeypatch.setattr(
+        server,
+        "get_generated_document",
+        lambda document_id: SimpleNamespace(
+            path=missing_path,
+            file_name="expired.docx",
+            content_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+        ),
+    )
+
+    with running_server(monkeypatch, []) as (base_url, _):
+        with pytest.raises(HTTPError) as error:
+            urlopen(f"{base_url}/api/documents/{'c' * 32}")
+        payload = json.load(error.value)
+
+    assert error.value.code == 404
+    assert payload["error"] == "Generated document not found or expired."
 
 
 def test_rejects_approval_without_existing_review(monkeypatch):
