@@ -60,7 +60,26 @@ PYTHONPATH=src .venv/bin/python -m pytest frontend/tests
 
 ## Visual assets
 
+- EU identity: the English standard-version European Union wordmark is mirrored
+  from the [official European Union portal](https://european-union.europa.eu/index_en).
+  Its use does not imply EU institutional support, sponsorship, or approval.
+  Emblem use follows the
+  [EU legal notice](https://european-union.europa.eu/legal-notice_en).
 - Icons: [Lucide](https://lucide.dev/), ISC License, pinned from
   `lucide-static@0.468.0`.
-- Geographic image: NASA Earth Observatory Black Marble 2012 composite,
-  public-domain NASA imagery.
+
+## Visual reference
+
+The interface adapts the visual language measured from the official European
+Union portal on 24 August 2026:
+
+- Arial with a 16px base size and 24–28px reading line height.
+- `#0e47cb` interactive blue, `#191d26` text, `#515560` secondary text,
+  `#f3f6fc` tinted surfaces, and the emblem's `#003399`/`#ffcc00`.
+- A 104px institutional header, 56px product navigation, and 48px controls on
+  desktop.
+- Four-pixel control radii, eight-pixel card radii, and low-contrast blue card
+  shadows.
+
+These tokens are adapted to the existing three-panel chat workspace rather than
+copying the portal's page layout or content.

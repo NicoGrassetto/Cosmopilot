@@ -11,6 +11,7 @@ const messageInput = document.querySelector("#messageInput");
 const sendButton = document.querySelector("#sendButton");
 const typingIndicator = document.querySelector("#typingIndicator");
 const connectionStatus = document.querySelector("#connectionStatus");
+const connectionStatusText = connectionStatus.querySelector(".status-text");
 const serviceBanner = document.querySelector("#serviceBanner");
 const serviceBannerText = document.querySelector("#serviceBannerText");
 const approvalSection = document.querySelector("#approvalSection");
@@ -401,11 +402,11 @@ async function checkHealth() {
             throw new Error("Azure environment is not configured for this server.");
         }
         connectionStatus.dataset.state = "online";
-        connectionStatus.lastChild.textContent = " Agent ready";
+        connectionStatusText.textContent = "Agent ready";
     } catch (error) {
         const message = error instanceof Error ? error.message : "Agent service unavailable.";
         connectionStatus.dataset.state = "offline";
-        connectionStatus.lastChild.textContent = " Service unavailable";
+        connectionStatusText.textContent = "Service unavailable";
         showServiceError(message);
     }
 }
