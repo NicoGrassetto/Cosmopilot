@@ -3,58 +3,81 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#123f8c">
+    <meta name="theme-color" content="#0e47cb">
     <meta name="description" content="EU resilience coordination workspace">
     <title>EU Resilience Desk</title>
-    <link rel="icon" href="/assets/globe-2.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/eu-favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/styles.css">
     <script src="/app.js" defer></script>
 </head>
 <body>
+    <a class="skip-link" href="#mainContent">Skip to main content</a>
     <div class="app-shell">
-        <header class="topbar">
-            <button
-                class="icon-button mobile-only"
-                id="openNavigation"
-                type="button"
-                aria-label="Open workspace navigation"
-                aria-controls="navigationPanel"
-                aria-expanded="false"
-                title="Workspace navigation"
-            >
-                <img src="/assets/panel-left.svg" alt="" aria-hidden="true">
-            </button>
+        <header class="site-header">
+            <div class="topbar">
+                <div class="topbar-inner">
+                    <a
+                        class="eu-brand"
+                        href="https://european-union.europa.eu/index_en"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="European Union website (opens in a new tab)"
+                    >
+                        <img src="/assets/eu-logo-en.svg" alt="European Union">
+                    </a>
 
-            <a class="brand" href="/" aria-label="EU Resilience Desk home">
-                <span class="brand-mark" aria-hidden="true">
-                    <img src="/assets/globe-2.svg" alt="">
-                </span>
-                <span>
-                    <strong>EU Resilience Desk</strong>
-                    <small>Cross-agency coordination</small>
-                </span>
-            </a>
-
-            <div class="topbar-context" aria-label="Environment">
-                <span>EU27 demo</span>
-                <span class="divider" aria-hidden="true"></span>
-                <span id="connectionStatus" class="connection-status" data-state="checking">
-                    <span class="status-dot" aria-hidden="true"></span>
-                    Checking service
-                </span>
+                    <div class="topbar-context" aria-label="Environment">
+                        <span id="connectionStatus" class="connection-status" data-state="checking">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            <span class="status-text">Checking service</span>
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <button
-                class="icon-button mobile-only"
-                id="openControls"
-                type="button"
-                aria-label="Open decision controls"
-                aria-controls="controlsPanel"
-                aria-expanded="false"
-                title="Decision controls"
-            >
-                <img src="/assets/sliders-horizontal.svg" alt="" aria-hidden="true">
-            </button>
+            <div class="productbar">
+                <div class="productbar-inner">
+                    <button
+                        class="icon-button productbar-button mobile-only"
+                        id="openNavigation"
+                        type="button"
+                        aria-label="Open workspace navigation"
+                        aria-controls="navigationPanel"
+                        aria-expanded="false"
+                        title="Workspace navigation"
+                    >
+                        <img src="/assets/panel-left.svg" alt="" aria-hidden="true">
+                    </button>
+
+                    <a class="brand" href="/" aria-label="EU Resilience Desk home">
+                        <strong>EU Resilience Desk</strong>
+                        <small>European Civil Protection and Humanitarian Aid Operations</small>
+                    </a>
+
+                    <a
+                        class="product-context"
+                        href="https://civil-protection-humanitarian-aid.ec.europa.eu/what/civil-protection/eu-civil-protection-mechanism_en"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="EU Civil Protection Mechanism (opens in a new tab)"
+                    >
+                        <span>EU Civil Protection Mechanism</span>
+                        <img src="/assets/arrow-up-right.svg" alt="" aria-hidden="true">
+                    </a>
+
+                    <button
+                        class="icon-button productbar-button mobile-only"
+                        id="openControls"
+                        type="button"
+                        aria-label="Open decision controls"
+                        aria-controls="controlsPanel"
+                        aria-expanded="false"
+                        title="Decision controls"
+                    >
+                        <img src="/assets/sliders-horizontal.svg" alt="" aria-hidden="true">
+                    </button>
+                </div>
+            </div>
         </header>
 
         <div class="workspace">
@@ -93,17 +116,9 @@
                         </button>
                     </div>
                 </section>
-
-                <figure class="snapshot-figure">
-                    <img src="/assets/europe-night.jpg" alt="Satellite composite showing Europe at night">
-                    <figcaption>
-                        <span>Geographic context</span>
-                        <small>NASA Black Marble composite</small>
-                    </figcaption>
-                </figure>
             </aside>
 
-            <main class="conversation-panel">
+            <main class="conversation-panel" id="mainContent">
                 <header class="conversation-heading">
                     <div>
                         <span class="eyebrow">Active workspace</span>
@@ -154,10 +169,6 @@
                             <img src="/assets/send.svg" alt="" aria-hidden="true">
                         </button>
                     </form>
-                    <div class="composer-notice">
-                        <img src="/assets/database.svg" alt="" aria-hidden="true">
-                        Static EU27 demo snapshot with disclosed synthetic overlays
-                    </div>
                 </footer>
             </main>
 
@@ -205,22 +216,6 @@
                     </button>
                 </section>
 
-                <section class="control-section" aria-labelledby="evidenceContractTitle">
-                    <h2 id="evidenceContractTitle">Evidence contract</h2>
-                    <ul class="evidence-key">
-                        <li><span class="key-mark observed"></span><span>Source-derived observations</span></li>
-                        <li><span class="key-mark derived"></span><span>Derived risk indicators</span></li>
-                        <li><span class="key-mark synthetic"></span><span>Synthetic demo overlays</span></li>
-                    </ul>
-                </section>
-
-                <section class="control-section boundary-section" aria-labelledby="boundaryTitle">
-                    <img src="/assets/lock-keyhole.svg" alt="" aria-hidden="true">
-                    <div>
-                        <h2 id="boundaryTitle">Execution boundary</h2>
-                        <p>Internal coordination review only. No public warning, funding, or emergency action.</p>
-                    </div>
-                </section>
             </aside>
         </div>
         <div class="panel-backdrop" id="panelBackdrop" hidden></div>
