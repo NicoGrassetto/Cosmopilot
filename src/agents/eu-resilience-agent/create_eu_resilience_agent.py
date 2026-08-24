@@ -30,6 +30,87 @@ AGENT_NAME = "eu-resilience-agent"
 TOOLBOX_NAME = "eu-resilience-skills"
 TOOLBOX_CONNECTION_ENV = "AZURE_TOOLBOX_CONNECTION_ID"
 MAX_TOOL_ITERATIONS = 8
+logger = logging.getLogger("eu_resilience_agent")
+
+
+def _resolve_deployed_configuration(
+    project_endpoint: str,
+    toolbox_endpoint: str,
+) -> tuple[str, str | None]:
+    configured_model = os.environ.get("AZURE_DEPLOYMENT_NAME")
+    configured_connection = os.environ.get(TOOLBOX_CONNECTION_ENV)
+
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=project_endpoint,
+            credential=credential,
+            allow_preview=True,
+        ) as client,
+    ):
+        model = configured_model
+        if not model:
+            latest_agent = next(
+                iter(
+                    client.agents.list_versions(
+                        agent_name=AGENT_NAME,
+                        order="desc",
+                    )
+                ),
+                None,
+            )
+            definition = getattr(latest_agent, "definition", None)
+            model = getattr(definition, "model", None)
+
+        if not model:
+            deployment_names = [
+                str(deployment.name)
+                for deployment in client.deployments.list()
+                if getattr(deployment, "name", None)
+            ]
+            model = (
+                "gpt-4-1-nano"
+                if "gpt-4-1-nano" in deployment_names
+                else None
+            )
+        if not model:
+            raise RuntimeError(
+                "Unable to resolve an existing model deployment. Set "
+                "AZURE_DEPLOYMENT_NAME explicitly."
+            )
+
+        connections = list(client.connections.list())
+        connection_id = None
+        if configured_connection:
+            matched = next(
+                (
+                    connection
+                    for connection in connections
+                    if configured_connection
+                    in {
+                        str(getattr(connection, "id", "")),
+                        str(getattr(connection, "name", "")),
+                    }
+                ),
+                None,
+            )
+            connection_id = (
+                str(matched.id) if matched is not None else configured_connection
+            )
+        else:
+            matched = next(
+                (
+                    connection
+                    for connection in connections
+                    if str(getattr(connection, "target", "")).rstrip("/")
+                    == toolbox_endpoint.rstrip("/")
+                ),
+                None,
+            )
+            if matched is not None:
+                connection_id = str(matched.id)
+
+    return str(model), connection_id
 
 
 def main() -> None:
@@ -42,13 +123,10 @@ def main() -> None:
     toolbox_endpoint = (
         f"{project_endpoint}/toolboxes/{TOOLBOX_NAME}/mcp?api-version=v1"
     )
-    toolbox_connection_id = os.environ.get(TOOLBOX_CONNECTION_ENV)
-    if not toolbox_connection_id:
-        raise RuntimeError(
-            f"{TOOLBOX_CONNECTION_ENV} must name a remote-tool project connection "
-            f"targeting {toolbox_endpoint} with user Entra token audience "
-            "https://ai.azure.com"
-        )
+    model, toolbox_connection_id = _resolve_deployed_configuration(
+        project_endpoint,
+        toolbox_endpoint,
+    )
 
     base_instructions = (
         AGENT_DIR / "prompts" / "v2_instructions.md"
@@ -62,16 +140,17 @@ def main() -> None:
             raise ValueError(f"Skill file has invalid front matter: {skill_md}")
 
         skill_name = skill_md.parent.name
-        skill_version = create_from_files(
-            name=skill_name,
-            skill_directory=skill_md.parent,
-        )
-        skill_references.append(
-            ToolboxSkillReference(
+        if toolbox_connection_id:
+            skill_version = create_from_files(
                 name=skill_name,
-                version=skill_version.version,
+                skill_directory=skill_md.parent,
             )
-        )
+            skill_references.append(
+                ToolboxSkillReference(
+                    name=skill_name,
+                    version=skill_version.version,
+                )
+            )
         skill_blocks.extend(
             [
                 f'<skill name="{skill_name}">',
@@ -80,7 +159,7 @@ def main() -> None:
             ]
         )
 
-    if not skill_references:
+    if not skill_blocks:
         raise RuntimeError(f"No skills found under {AGENT_DIR / 'skills'}")
 
     instructions = "\n\n".join(
@@ -90,19 +169,26 @@ def main() -> None:
         ]
     )
 
-    toolbox_version = create_toolbox(
-        name=TOOLBOX_NAME,
-        description="Governed skills for the EU resilience coordination agent.",
-        tools=[],
-        skills=skill_references,
-        metadata={"usecase": AGENT_NAME},
-        allow_preview=True,
-    )
-    update_toolbox(
-        name=TOOLBOX_NAME,
-        default_version=toolbox_version.version,
-        allow_preview=True,
-    )
+    toolbox_version = None
+    if toolbox_connection_id:
+        toolbox_version = create_toolbox(
+            name=TOOLBOX_NAME,
+            description="Governed skills for the EU resilience coordination agent.",
+            tools=[],
+            skills=skill_references,
+            metadata={"usecase": AGENT_NAME},
+            allow_preview=True,
+        )
+        update_toolbox(
+            name=TOOLBOX_NAME,
+            default_version=toolbox_version.version,
+            allow_preview=True,
+        )
+    else:
+        logger.info(
+            "No project connection targets %s; using embedded skills without MCP.",
+            toolbox_endpoint,
+        )
 
     tools: list[Tool] = [
         FunctionTool(
@@ -138,6 +224,41 @@ def main() -> None:
                     },
                 },
                 "required": ["country"],
+                "additionalProperties": False,
+            },
+            strict=True,
+        ),
+        FunctionTool(
+            name="generate_resilience_report",
+            description=(
+                "Generate a styled downloadable DOCX report with charts from "
+                "current country evidence or an EU leadership-priority ranking."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "report_type": {
+                        "type": "string",
+                        "enum": ["country", "eu_priorities"],
+                    },
+                    "country": {
+                        "type": ["string", "null"],
+                        "description": (
+                            "Canonical EU country name for a country report; "
+                            "null for an EU priorities report."
+                        ),
+                    },
+                    "limit": {
+                        "type": ["integer", "null"],
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": (
+                            "Priority count for an EU priorities report; null "
+                            "for a country report."
+                        ),
+                    },
+                },
+                "required": ["report_type", "country", "limit"],
                 "additionalProperties": False,
             },
             strict=True,
@@ -196,32 +317,41 @@ def main() -> None:
             strict=True,
         ),
     ]
-    tools.append(
-        MCPTool(
-            server_label="eu_resilience_skills",
-            server_url=toolbox_endpoint,
-            project_connection_id=toolbox_connection_id,
-            require_approval="never",
+    if toolbox_connection_id:
+        tools.append(
+            MCPTool(
+                server_label="eu_resilience_skills",
+                server_url=toolbox_endpoint,
+                project_connection_id=toolbox_connection_id,
+                require_approval="never",
+            )
         )
-    )
+
+    metadata = {
+        "usecase": AGENT_NAME,
+        "prompt_version": "v2",
+        "prompt_revision": "realtime-docx-reports-v3",
+    }
+    if toolbox_version is not None:
+        metadata.update(
+            {
+                "toolbox": TOOLBOX_NAME,
+                "toolbox_version": toolbox_version.version,
+            }
+        )
 
     create_prompt_agent(
         agent_name=AGENT_NAME,
-        model=os.environ["AZURE_DEPLOYMENT_NAME"],
+        model=model,
         instructions=instructions,
         description=(
             "Turns governed EU resilience evidence into approved cross-agency "
-            "coordination actions."
+            "coordination actions and downloadable evidence briefings."
         ),
         tools=tools,
         tool_choice="auto",
         temperature=0.1,
-        metadata={
-            "usecase": AGENT_NAME,
-            "prompt_version": "v2",
-            "toolbox": TOOLBOX_NAME,
-            "toolbox_version": toolbox_version.version,
-        },
+        metadata=metadata,
         allow_preview=True,
     )
 

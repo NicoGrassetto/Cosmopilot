@@ -91,6 +91,11 @@
                             <small>Spain playbook</small>
                             <img src="/assets/arrow-up-right.svg" alt="" aria-hidden="true">
                         </button>
+                        <button type="button" data-prompt="Create a downloadable DOCX resilience briefing for Spain with charts from the current evidence.">
+                            <span>Export briefing</span>
+                            <small>Spain DOCX with charts</small>
+                            <img src="/assets/arrow-up-right.svg" alt="" aria-hidden="true">
+                        </button>
                     </div>
                 </section>
 
@@ -126,6 +131,17 @@
                     <span id="serviceBannerText"></span>
                 </div>
 
+                <section class="agent-activity" id="agentActivity" aria-live="polite" hidden>
+                    <div class="activity-current">
+                        <span class="activity-pulse" aria-hidden="true"></span>
+                        <div>
+                            <span class="eyebrow" id="activityState">Agent activity</span>
+                            <strong id="activityTitle">Starting the governed workflow</strong>
+                        </div>
+                    </div>
+                    <ol class="activity-steps" id="activitySteps" aria-label="Agent progress"></ol>
+                </section>
+
                 <section
                     class="message-stream"
                     id="messageStream"
@@ -135,7 +151,7 @@
 
                 <div class="typing-indicator" id="typingIndicator" aria-label="Agent is working" hidden>
                     <span></span><span></span><span></span>
-                    <small>Reviewing governed evidence</small>
+                    <small id="typingStatusText">Reviewing governed evidence</small>
                 </div>
 
                 <footer class="composer-wrap">
@@ -146,7 +162,7 @@
                             name="message"
                             rows="1"
                             maxlength="8000"
-                            placeholder="Ask about priorities, country evidence, or a coordination decision..."
+                            placeholder="Ask about priorities, evidence, decisions, or a downloadable report..."
                             autocomplete="off"
                             required
                         ></textarea>
@@ -233,6 +249,7 @@
                 <time></time>
             </header>
             <div class="message-content"></div>
+            <div class="message-documents"></div>
         </article>
     </template>
 </body>
