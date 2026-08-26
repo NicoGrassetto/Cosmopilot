@@ -9,7 +9,7 @@ from azure.ai.projects.models import (
     RiskCategory,
 )
 
-from evaluations import red_teaming
+from . import red_teaming
 
 
 @pytest.mark.integration

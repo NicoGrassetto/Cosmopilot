@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Any
 
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import RedTeam
@@ -13,7 +14,7 @@ from azure.identity import DefaultAzureCredential
 logger = logging.getLogger(__name__)
 
 
-def create(red_team: RedTeam) -> RedTeam:
+def create(red_team: RedTeam, **kwargs: Any) -> RedTeam:
     with (
         DefaultAzureCredential() as credential,
         AIProjectClient(
@@ -21,10 +22,10 @@ def create(red_team: RedTeam) -> RedTeam:
             credential=credential,
         ) as client,
     ):
-        return client.beta.red_teams.create(red_team=red_team)
+        return client.beta.red_teams.create(red_team=red_team, **kwargs)
 
 
-def get(name: str) -> RedTeam:
+def get(name: str, **kwargs: Any) -> RedTeam:
     with (
         DefaultAzureCredential() as credential,
         AIProjectClient(
@@ -32,10 +33,10 @@ def get(name: str) -> RedTeam:
             credential=credential,
         ) as client,
     ):
-        return client.beta.red_teams.get(name=name)
+        return client.beta.red_teams.get(name=name, **kwargs)
 
 
-def list_red_teams() -> list[RedTeam]:
+def list_red_teams(**kwargs: Any) -> list[RedTeam]:
     with (
         DefaultAzureCredential() as credential,
         AIProjectClient(
@@ -43,7 +44,7 @@ def list_red_teams() -> list[RedTeam]:
             credential=credential,
         ) as client,
     ):
-        return list(client.beta.red_teams.list())
+        return list(client.beta.red_teams.list(**kwargs))
 
 
 def main() -> None:
@@ -67,17 +68,18 @@ def main() -> None:
             definition = json.loads(
                 args.definition.read_text(encoding="utf-8")
             )
-            print(create(red_team=RedTeam(definition)))
+            result = create(red_team=RedTeam(definition))
+            output = result.as_dict()
 
         elif args.command == "get":
-            print(get(name=args.name))
+            result = get(name=args.name)
+            output = result.as_dict()
 
         elif args.command == "list-red-teams":
-            for red_team in list_red_teams():
-                print(red_team)
+            output = [red_team.as_dict() for red_team in list_red_teams()]
 
         else:
-            raise ValueError(
+            raise AssertionError(
                 f"Unsupported red-team command: {args.command}"
             )
     except Exception:
@@ -86,6 +88,8 @@ def main() -> None:
             args.command,
         )
         raise SystemExit(1)
+
+    print(json.dumps(output, indent=2, default=str))
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 import os
 
 from evaluations.datasets import upload_dataset
-from evaluations import red_teaming, rules
+from evaluations import rules
 
 from azure.identity import DefaultAzureCredential
 
@@ -24,6 +24,8 @@ from azure.ai.projects.models import (
     RedTeam,
     RiskCategory,
 )
+
+from . import red_teaming
 
 def main() -> None:
     ###############################

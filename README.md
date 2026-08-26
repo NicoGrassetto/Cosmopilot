@@ -89,6 +89,14 @@ This repository uses Azure Developer CLI to provision infrastructure only.
 
 ## Local Development
 
+After infrastructure provisioning, `azd` automatically populates the root `.env` file with the deployed environment values. The generated file is ignored by Git.
+
+Authenticate with Azure before running Azure-dependent code locally:
+
+```bash
+azd auth login
+```
+
 Python 3.10 or newer is required; Python 3.12 is recommended. Create the virtual environment and install dependencies once from the repository root:
 
 ```bash

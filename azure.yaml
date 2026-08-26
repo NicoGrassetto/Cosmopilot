@@ -9,3 +9,7 @@ infra:
   provider: bicep
   path: infra
   module: main
+hooks:
+  postprovision:
+    shell: sh
+    run: azd env get-values > .env
