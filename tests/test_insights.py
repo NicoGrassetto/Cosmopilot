@@ -2,7 +2,7 @@ import json
 import sys
 from unittest.mock import MagicMock, call
 
-import insights
+import evaluations.insights as insights
 
 
 def test_insight_wrappers_delegate_to_beta_insights(monkeypatch):

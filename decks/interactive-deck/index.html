@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Interactive tier boards for Microsoft Foundry tools and evaluators.">
+	<title>Microsoft Foundry Tier Boards</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+	<script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+	<script defer src="script.js"></script>
+</head>
+<body>
+	<main class="app-shell">
+		<nav class="slide-switcher" aria-label="Deck pages">
+			<a href="#tools" data-slide-link="tools" aria-current="page">
+				<span class="slide-number">01</span>
+				<span>Tools</span>
+				<strong>34</strong>
+			</a>
+			<a href="#evaluations" data-slide-link="evaluations">
+				<span class="slide-number">02</span>
+				<span>Evaluations</span>
+				<strong>43</strong>
+			</a>
+		</nav>
+
+		<section class="deck-slide" id="tools-slide" data-slide="tools">
+		<header class="app-header">
+			<div class="title-block">
+				<a class="product-mark" href="https://learn.microsoft.com/azure/foundry/agents/concepts/tool-catalog" target="_blank" rel="noreferrer" aria-label="Open the Microsoft Foundry tool catalog">
+					<span class="microsoft-mark" aria-hidden="true">
+						<span></span><span></span><span></span><span></span>
+					</span>
+					<span>Microsoft Foundry</span>
+				</a>
+				<h1>Tool Tier Board</h1>
+				<p>Agent catalog + Python API <span aria-hidden="true">/</span> verified <time datetime="2026-08-26">26 Aug 2026</time></p>
+			</div>
+
+			<div class="header-actions">
+				<div class="inventory-stat" aria-label="Tool inventory size">
+					<strong id="total-tools">34</strong>
+					<span>tools</span>
+				</div>
+				<button class="command-button" id="reset-board" type="button" title="Reset the board">
+					<i data-lucide="rotate-ccw" aria-hidden="true"></i>
+					<span>Reset</span>
+				</button>
+			</div>
+		</header>
+
+		<section class="control-strip" aria-label="Board controls">
+			<label class="search-control">
+				<span class="sr-only">Search tools</span>
+				<i data-lucide="search" aria-hidden="true"></i>
+				<input id="tool-search" type="search" placeholder="Search tools" autocomplete="off">
+			</label>
+
+			<div class="segmented-control" role="group" aria-label="Filter by availability">
+				<button type="button" data-filter="all" aria-pressed="true">All</button>
+				<button type="button" data-filter="ga" aria-pressed="false">GA</button>
+				<button type="button" data-filter="preview" aria-pressed="false">Preview</button>
+			</div>
+
+			<div class="progress-block">
+				<span id="progress-label">0 / 34 ranked</span>
+				<div class="progress-track" id="rank-progress" role="progressbar" aria-label="Ranked tools" aria-valuemin="0" aria-valuemax="34" aria-valuenow="0">
+					<span id="progress-fill"></span>
+				</div>
+			</div>
+		</section>
+
+		<section class="tool-pool" aria-labelledby="unranked-title">
+			<div class="section-heading">
+				<div>
+					<p class="eyebrow">Source tray</p>
+					<h2 id="unranked-title">Unranked <span id="unranked-count">34</span></h2>
+				</div>
+
+				<div class="pool-actions">
+					<div class="status-legend" aria-label="Availability legend">
+						<span><i class="legend-dot ga"></i>GA</span>
+						<span><i class="legend-dot preview"></i>Preview</span>
+					</div>
+					<button class="icon-button" id="return-selected" type="button" title="Return selected tool to unranked" aria-label="Return selected tool to unranked" disabled>
+						<i data-lucide="archive-restore" aria-hidden="true"></i>
+					</button>
+				</div>
+			</div>
+
+			<div class="tool-lane source-lane" id="unranked-lane" data-zone="unranked" tabindex="0" role="group" aria-label="Unranked tools"></div>
+		</section>
+
+		<section class="tier-board" aria-labelledby="tier-board-title">
+			<h2 class="sr-only" id="tier-board-title">Tool tiers</h2>
+			<ol class="tier-list">
+				<li class="tier-row tier-a">
+					<button class="tier-label" type="button" data-zone-target="A" aria-label="Move selected tool to tier A">
+						<strong>A</strong><span>Tier</span>
+					</button>
+					<div class="tool-lane tier-lane" id="tier-a" data-zone="A" tabindex="0" role="group" aria-label="Tier A tools"></div>
+				</li>
+				<li class="tier-row tier-b">
+					<button class="tier-label" type="button" data-zone-target="B" aria-label="Move selected tool to tier B">
+						<strong>B</strong><span>Tier</span>
+					</button>
+					<div class="tool-lane tier-lane" id="tier-b" data-zone="B" tabindex="0" role="group" aria-label="Tier B tools"></div>
+				</li>
+				<li class="tier-row tier-c">
+					<button class="tier-label" type="button" data-zone-target="C" aria-label="Move selected tool to tier C">
+						<strong>C</strong><span>Tier</span>
+					</button>
+					<div class="tool-lane tier-lane" id="tier-c" data-zone="C" tabindex="0" role="group" aria-label="Tier C tools"></div>
+				</li>
+				<li class="tier-row tier-d">
+					<button class="tier-label" type="button" data-zone-target="D" aria-label="Move selected tool to tier D">
+						<strong>D</strong><span>Tier</span>
+					</button>
+					<div class="tool-lane tier-lane" id="tier-d" data-zone="D" tabindex="0" role="group" aria-label="Tier D tools"></div>
+				</li>
+			</ol>
+		</section>
+
+		<footer class="app-footer">
+			<details>
+				<summary>Coverage &amp; sources</summary>
+				<div class="coverage-notes">
+					<p>The inventory combines every capability in the Foundry tool catalog with every concrete <code>Tool</code> subtype and unique toolbox capability in the Python API, including stable Responses primitives and preview resources.</p>
+					<p><strong>* A2A status:</strong> the Python API and <code>azure-ai-projects</code> 2.5.0 expose stable <code>A2ATool</code>, while the catalog page updated 31 July 2026 still labels A2A preview.</p>
+					<nav aria-label="Inventory sources">
+						<a href="https://learn.microsoft.com/azure/foundry/agents/concepts/tool-catalog" target="_blank" rel="noreferrer">Tool catalog</a>
+						<a href="https://learn.microsoft.com/python/api/azure-ai-projects/azure.ai.projects.models" target="_blank" rel="noreferrer">Python API</a>
+						<a href="https://github.com/Azure/azure-sdk-for-python/blob/main/sdk/ai/azure-ai-projects/CHANGELOG.md" target="_blank" rel="noreferrer">SDK releases</a>
+					</nav>
+				</div>
+			</details>
+
+			<p class="save-state"><i data-lucide="save" aria-hidden="true"></i> Saved in this browser</p>
+		</footer>
+		</section>
+
+		<section class="deck-slide evaluation-slide" id="evaluations-slide" data-slide="evaluations" hidden>
+			<header class="app-header">
+				<div class="title-block">
+					<a class="product-mark" href="https://learn.microsoft.com/azure/foundry/concepts/built-in-evaluators" target="_blank" rel="noreferrer" aria-label="Open the Microsoft Foundry evaluator catalog">
+						<span class="microsoft-mark" aria-hidden="true">
+							<span></span><span></span><span></span><span></span>
+						</span>
+						<span>Microsoft Foundry</span>
+					</a>
+					<h1>Evaluation Tier Board</h1>
+					<p>36 catalog + 4 Azure OpenAI + 3 custom <span aria-hidden="true">/</span> verified <time datetime="2026-08-26">26 Aug 2026</time></p>
+				</div>
+
+				<div class="header-actions">
+					<div class="inventory-stat" aria-label="Evaluator inventory size">
+						<strong id="evaluation-total">43</strong>
+						<span>evaluators</span>
+					</div>
+					<button class="command-button" id="evaluation-reset" type="button" title="Reset the evaluation board">
+						<i data-lucide="rotate-ccw" aria-hidden="true"></i>
+						<span>Reset</span>
+					</button>
+				</div>
+			</header>
+
+			<section class="control-strip" aria-label="Evaluation board controls">
+				<label class="search-control">
+					<span class="sr-only">Search evaluators</span>
+					<i data-lucide="search" aria-hidden="true"></i>
+					<input id="evaluation-search" type="search" placeholder="Search evaluators or sources" autocomplete="off">
+				</label>
+
+				<div class="segmented-control" role="group" aria-label="Filter evaluators by availability">
+					<button type="button" data-evaluation-filter="all" aria-pressed="true">All</button>
+					<button type="button" data-evaluation-filter="ga" aria-pressed="false">GA</button>
+					<button type="button" data-evaluation-filter="preview" aria-pressed="false">Preview</button>
+				</div>
+
+				<div class="progress-block">
+					<span id="evaluation-progress-label">0 / 43 ranked</span>
+					<div class="progress-track" id="evaluation-rank-progress" role="progressbar" aria-label="Ranked evaluators" aria-valuemin="0" aria-valuemax="43" aria-valuenow="0">
+						<span id="evaluation-progress-fill"></span>
+					</div>
+				</div>
+			</section>
+
+			<section class="tool-pool" aria-labelledby="evaluation-unranked-title">
+				<div class="section-heading">
+					<div>
+						<p class="eyebrow">Source tray</p>
+						<h2 id="evaluation-unranked-title">Unranked <span id="evaluation-unranked-count">43</span></h2>
+					</div>
+
+					<div class="pool-actions">
+						<div class="status-legend" aria-label="Evaluator availability legend">
+							<span><i class="legend-dot ga"></i>GA</span>
+							<span><i class="legend-dot preview"></i>Preview</span>
+						</div>
+						<button class="icon-button" id="evaluation-return-selected" type="button" title="Return selected evaluator to unranked" aria-label="Return selected evaluator to unranked" disabled>
+							<i data-lucide="archive-restore" aria-hidden="true"></i>
+						</button>
+					</div>
+				</div>
+
+				<div class="tool-lane source-lane" id="evaluation-unranked-lane" data-evaluation-zone="unranked" tabindex="0" role="group" aria-label="Unranked evaluators"></div>
+			</section>
+
+			<section class="tier-board" aria-labelledby="evaluation-tier-board-title">
+				<h2 class="sr-only" id="evaluation-tier-board-title">Evaluator tiers</h2>
+				<ol class="tier-list">
+					<li class="tier-row tier-a">
+						<button class="tier-label" type="button" data-evaluation-zone-target="A" aria-label="Move selected evaluator to tier A">
+							<strong>A</strong><span>Tier</span>
+						</button>
+						<div class="tool-lane tier-lane" id="evaluation-tier-a" data-evaluation-zone="A" tabindex="0" role="group" aria-label="Tier A evaluators"></div>
+					</li>
+					<li class="tier-row tier-b">
+						<button class="tier-label" type="button" data-evaluation-zone-target="B" aria-label="Move selected evaluator to tier B">
+							<strong>B</strong><span>Tier</span>
+						</button>
+						<div class="tool-lane tier-lane" id="evaluation-tier-b" data-evaluation-zone="B" tabindex="0" role="group" aria-label="Tier B evaluators"></div>
+					</li>
+					<li class="tier-row tier-c">
+						<button class="tier-label" type="button" data-evaluation-zone-target="C" aria-label="Move selected evaluator to tier C">
+							<strong>C</strong><span>Tier</span>
+						</button>
+						<div class="tool-lane tier-lane" id="evaluation-tier-c" data-evaluation-zone="C" tabindex="0" role="group" aria-label="Tier C evaluators"></div>
+					</li>
+					<li class="tier-row tier-d">
+						<button class="tier-label" type="button" data-evaluation-zone-target="D" aria-label="Move selected evaluator to tier D">
+							<strong>D</strong><span>Tier</span>
+						</button>
+						<div class="tool-lane tier-lane" id="evaluation-tier-d" data-evaluation-zone="D" tabindex="0" role="group" aria-label="Tier D evaluators"></div>
+					</li>
+				</ol>
+			</section>
+
+			<footer class="app-footer">
+				<details>
+					<summary>Coverage &amp; sources</summary>
+					<div class="coverage-notes">
+						<p>The inventory covers all 35 named Foundry built-ins, the preview Rubric evaluator, all four Azure OpenAI grader criterion types, and all three preview custom evaluator definitions.</p>
+						<p>Lifecycle labels follow the cloud evaluator catalog. This board does not duplicate similarly named local wrappers from the separate <code>azure-ai-evaluation</code> package.</p>
+						<nav aria-label="Evaluation inventory sources">
+							<a href="https://learn.microsoft.com/azure/foundry/concepts/built-in-evaluators" target="_blank" rel="noreferrer">Evaluator catalog</a>
+							<a href="https://learn.microsoft.com/azure/foundry/concepts/evaluation-evaluators/azure-openai-graders" target="_blank" rel="noreferrer">Azure OpenAI graders</a>
+							<a href="https://learn.microsoft.com/azure/foundry/concepts/evaluation-evaluators/custom-evaluators" target="_blank" rel="noreferrer">Custom evaluators</a>
+						</nav>
+					</div>
+				</details>
+
+				<p class="save-state"><i data-lucide="save" aria-hidden="true"></i> Saved in this browser</p>
+			</footer>
+		</section>
+	</main>
+
+	<p class="sr-only" id="drag-instructions">Press Enter to select a card, then activate a tier label or tier lane to place it. Use Alt plus arrow keys to move or reorder a focused card.</p>
+	<div class="sr-only" id="live-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
