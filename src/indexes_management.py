@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def create_or_update_index(
 	name: str,
 	version: str,
-	index: Index | MutableMapping[str, Any] | IO[bytes],
+	index: Index,
 ) -> Index:
 	with (
 		DefaultAzureCredential() as credential,

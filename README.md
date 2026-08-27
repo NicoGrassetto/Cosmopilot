@@ -67,6 +67,30 @@ Cosmopilot/
 
 ---
 
+## LLMOps
+
+### Online evaluation
+
+This repository uses the following online evaluation pipeline:
+
+<p align="center">
+  <img src="assets/online-evals.png" alt="Online evaluation pipeline" width="50%" />
+</p>
+
+User interactions are evaluated and captured in Azure Application Insights. A curation pipeline removes personally identifiable information (PII), semantically deduplicates the resulting examples, and applies additional quality checks. Selected cases enter the repository through a pull request so they can be reviewed and labeled before important production failures are promoted to the regression set. This feedback loop complements the golden, validation, and evaluation datasets and turns production signals into repeatable predeployment quality gates.
+
+### Offline evaluation
+
+This repository uses the following offline evaluation pipeline:
+
+<p align="center">
+  <img src="assets/offline-evals.png" alt="Offline evaluation pipeline" width="50%" />
+</p>
+
+Pull requests trigger evaluations against stable regression cases and the broader evaluation set so quality regressions can be caught before changes are merged. The golden set provides human-reviewed reference examples, while the validation set supports held-out predeployment checks. Scheduled evaluation runs exercise these datasets beyond individual code changes. In parallel, scheduled red-team runs probe adversarial behavior, and confirmed findings are retained in the safety set as repeatable safety gates.
+
+---
+
 ## Deploy
 
 This repository uses Azure Developer CLI to provision infrastructure only.

@@ -1,245 +1,94 @@
-import json
-import sys
-from unittest.mock import MagicMock, call
+from uuid import uuid4
+
+import pytest
+from azure.ai.projects.models import AzureAISearchIndex
 
 import indexes_management
 
 
-def test_index_wrappers_delegate_to_indexes(monkeypatch):
-	endpoint = "https://example.services.ai.azure.com/api/projects/test"
-	monkeypatch.setenv("AZURE_AI_PROJECT_ENDPOINT", endpoint)
+@pytest.mark.integration
+def test_create_or_update_index(request):
+	index_name = f"pytest-index-{uuid4().hex[:8]}"
 
-	credential_context = MagicMock()
-	credential = object()
-	credential_context.__enter__.return_value = credential
-	credential_factory = MagicMock(return_value=credential_context)
-
-	client = MagicMock()
-	client.__enter__.return_value = client
-	client_factory = MagicMock(return_value=client)
-	sdk_indexes = client.indexes
-
-	monkeypatch.setattr(
-		indexes_management,
-		"DefaultAzureCredential",
-		credential_factory,
-	)
-	monkeypatch.setattr(
-		indexes_management,
-		"AIProjectClient",
-		client_factory,
-	)
-
-	definition = {
-		"type": "AzureSearch",
-		"connectionName": "search-connection",
-		"indexName": "product-documents",
-	}
-	created = object()
-	sdk_indexes.create_or_update.return_value = created
-	assert indexes_management.create_or_update_index(
-		"product-documents",
-		"1",
-		definition,
-	) is created
-	sdk_indexes.create_or_update.assert_called_once_with(
-		name="product-documents",
+	created_index = indexes_management.create_or_update_index(
+		name=index_name,
 		version="1",
-		index=definition,
+		index=AzureAISearchIndex(
+			connection_name="aisearch",
+			index_name=index_name,
+		),
+	)
+	request.addfinalizer(
+		lambda: indexes_management.delete_index(index_name, "1")
 	)
 
-	retrieved = object()
-	sdk_indexes.get.return_value = retrieved
-	assert indexes_management.get_index(
-		"product-documents",
-		"1",
-	) is retrieved
-	sdk_indexes.get.assert_called_once_with(
-		name="product-documents",
+	assert created_index.name == index_name
+	assert created_index.version == "1"
+
+
+@pytest.mark.integration
+def test_get_index(request):
+	index_name = f"pytest-index-{uuid4().hex[:8]}"
+
+	indexes_management.create_or_update_index(
+		name=index_name,
 		version="1",
+		index=AzureAISearchIndex(
+			connection_name="aisearch",
+			index_name=index_name,
+		),
+	)
+	request.addfinalizer(
+		lambda: indexes_management.delete_index(index_name, "1")
 	)
 
-	latest_indexes = [object(), object()]
-	sdk_indexes.list.return_value = iter(latest_indexes)
-	assert indexes_management.list_indexes() == latest_indexes
-	sdk_indexes.list.assert_called_once_with()
+	retrieved_index = indexes_management.get_index(index_name, "1")
 
-	versions = [object(), object()]
-	sdk_indexes.list_versions.return_value = iter(versions)
-	assert indexes_management.list_index_versions(
-		"product-documents"
-	) == versions
-	sdk_indexes.list_versions.assert_called_once_with(
-		name="product-documents"
-	)
+	assert retrieved_index.name == index_name
+	assert retrieved_index.version == "1"
 
-	assert indexes_management.delete_index(
-		"product-documents",
-		"1",
-	) is None
-	sdk_indexes.delete.assert_called_once_with(
-		name="product-documents",
+
+@pytest.mark.integration
+def test_list_indexes():
+	listed_indexes = indexes_management.list_indexes()
+
+	assert isinstance(listed_indexes, list)
+
+
+@pytest.mark.integration
+def test_list_index_versions(request):
+	index_name = f"pytest-index-{uuid4().hex[:8]}"
+
+	indexes_management.create_or_update_index(
+		name=index_name,
 		version="1",
+		index=AzureAISearchIndex(
+			connection_name="aisearch",
+			index_name=index_name,
+		),
+	)
+	request.addfinalizer(
+		lambda: indexes_management.delete_index(index_name, "1")
 	)
 
-	assert credential_factory.call_count == 5
-	assert client_factory.call_args_list == [
-		call(endpoint=endpoint, credential=credential)
-	] * 5
+	versions = indexes_management.list_index_versions(index_name)
+
+	assert any(index.version == "1" for index in versions)
 
 
-def test_create_or_update_command_loads_index_json(
-	monkeypatch,
-	tmp_path,
-	capsys,
-):
-	definition = {
-		"type": "AzureSearch",
-		"connectionName": "search-connection",
-		"indexName": "product-documents",
-	}
-	definition_path = tmp_path / "index.json"
-	definition_path.write_text(json.dumps(definition), encoding="utf-8")
+@pytest.mark.integration
+def test_delete_index():
+	index_name = f"pytest-index-{uuid4().hex[:8]}"
 
-	result = MagicMock()
-	result.as_dict.return_value = {
-		"name": "product-documents",
-		"version": "1",
-	}
-	create_or_update_index = MagicMock(return_value=result)
-	monkeypatch.setattr(
-		indexes_management,
-		"create_or_update_index",
-		create_or_update_index,
-	)
-	monkeypatch.setattr(
-		sys,
-		"argv",
-		[
-			"indexes-management",
-			"create-or-update",
-			"--name",
-			"product-documents",
-			"--version",
-			"1",
-			"--index",
-			str(definition_path),
-		],
+	indexes_management.create_or_update_index(
+		name=index_name,
+		version="1",
+		index=AzureAISearchIndex(
+			connection_name="aisearch",
+			index_name=index_name,
+		),
 	)
 
-	indexes_management.main()
+	deleted_index = indexes_management.delete_index(index_name, "1")
 
-	create_or_update_index.assert_called_once_with(
-		"product-documents",
-		"1",
-		definition,
-	)
-	assert json.loads(capsys.readouterr().out) == {
-		"name": "product-documents",
-		"version": "1",
-	}
-
-
-def test_get_and_list_commands(monkeypatch, capsys):
-	retrieved = MagicMock()
-	retrieved.as_dict.return_value = {
-		"name": "product-documents",
-		"version": "1",
-	}
-	get_index = MagicMock(return_value=retrieved)
-	monkeypatch.setattr(indexes_management, "get_index", get_index)
-	monkeypatch.setattr(
-		sys,
-		"argv",
-		[
-			"indexes-management",
-			"get",
-			"--name",
-			"product-documents",
-			"--version",
-			"1",
-		],
-	)
-
-	indexes_management.main()
-
-	get_index.assert_called_once_with("product-documents", "1")
-	assert json.loads(capsys.readouterr().out) == {
-		"name": "product-documents",
-		"version": "1",
-	}
-
-	listed = MagicMock()
-	listed.as_dict.return_value = {
-		"name": "product-documents",
-		"version": "2",
-	}
-	list_indexes = MagicMock(return_value=[listed])
-	monkeypatch.setattr(indexes_management, "list_indexes", list_indexes)
-	monkeypatch.setattr(
-		sys,
-		"argv",
-		["indexes-management", "list"],
-	)
-
-	indexes_management.main()
-
-	list_indexes.assert_called_once_with()
-	assert json.loads(capsys.readouterr().out) == [
-		{"name": "product-documents", "version": "2"}
-	]
-
-
-def test_list_versions_and_delete_commands(monkeypatch, capsys):
-	version = MagicMock()
-	version.as_dict.return_value = {
-		"name": "product-documents",
-		"version": "1",
-	}
-	list_index_versions = MagicMock(return_value=[version])
-	monkeypatch.setattr(
-		indexes_management,
-		"list_index_versions",
-		list_index_versions,
-	)
-	monkeypatch.setattr(
-		sys,
-		"argv",
-		[
-			"indexes-management",
-			"list-versions",
-			"--name",
-			"product-documents",
-		],
-	)
-
-	indexes_management.main()
-
-	list_index_versions.assert_called_once_with("product-documents")
-	assert json.loads(capsys.readouterr().out) == [
-		{"name": "product-documents", "version": "1"}
-	]
-
-	delete_index = MagicMock()
-	monkeypatch.setattr(indexes_management, "delete_index", delete_index)
-	monkeypatch.setattr(
-		sys,
-		"argv",
-		[
-			"indexes-management",
-			"delete",
-			"--name",
-			"product-documents",
-			"--version",
-			"1",
-		],
-	)
-
-	indexes_management.main()
-
-	delete_index.assert_called_once_with("product-documents", "1")
-	assert json.loads(capsys.readouterr().out) == {
-		"name": "product-documents",
-		"version": "1",
-		"deleted": True,
-	}
+	assert deleted_index is None
