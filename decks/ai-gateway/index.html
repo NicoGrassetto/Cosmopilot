@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="An interactive view of Azure API Management mediating AI traffic across users, agents, tools, models, and multi-cloud providers.">
+	<meta name="theme-color" content="#080b16">
+	<title>AI Gateway — One Governed Path</title>
+	<link rel="stylesheet" href="styles.css?v=3">
+	<script defer src="script.js?v=3"></script>
+</head>
+<body>
+	<a class="skip-link" href="#presentation">Skip to the slides</a>
+
+	<main class="presentation" id="presentation">
+		<section class="slide" id="slide-gateway" data-deck-slide="gateway" aria-labelledby="slide-title">
+			<header class="slide-header">
+				<div class="product-line">
+					<span class="microsoft-mark" aria-hidden="true">
+						<span></span><span></span><span></span><span></span>
+					</span>
+					<span>Azure API Management</span>
+					<span class="product-divider" aria-hidden="true"></span>
+					<strong>AI Gateway</strong>
+				</div>
+
+				<div class="slide-controls" aria-label="Presentation controls">
+					<button class="control-button motion-button" id="motion-toggle" type="button" aria-pressed="true" aria-label="Pause traffic animation">
+						<svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>
+						<svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg>
+						<span class="motion-label">Pause</span>
+					</button>
+					<button class="control-button auto-button" id="auto-route-toggle" type="button" aria-pressed="true">
+						<span class="auto-indicator" aria-hidden="true"></span>
+						<span>Auto-route</span>
+					</button>
+					<button class="icon-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" title="Full screen (F)">
+						<svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+						<svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+					</button>
+				</div>
+
+				<div class="title-row">
+					<h1 id="slide-title">Every AI interaction.<br><span>One governed path.</span></h1>
+					<p>Secure, observe, and route model, tool, and agent traffic across clouds and environments.</p>
+				</div>
+			</header>
+
+			<section class="network-frame" id="traffic-map" aria-label="Interactive AI Gateway traffic map">
+				<div class="frame-heading">
+					<span><i aria-hidden="true"></i> Live traffic map</span>
+					<small>Select any endpoint to reroute</small>
+				</div>
+
+				<svg class="traffic-layer" id="traffic-layer" aria-hidden="true">
+					<defs>
+						<linearGradient id="request-gradient" x1="0" y1="0" x2="1" y2="0">
+							<stop offset="0" stop-color="#52e5ff"/>
+							<stop offset="1" stop-color="#8578ff"/>
+						</linearGradient>
+						<linearGradient id="route-gradient" x1="0" y1="0" x2="1" y2="0">
+							<stop offset="0" stop-color="#8578ff"/>
+							<stop offset="1" stop-color="#f04cc3"/>
+						</linearGradient>
+						<linearGradient id="response-gradient" x1="0" y1="0" x2="1" y2="0">
+							<stop offset="0" stop-color="#8ef0bf"/>
+							<stop offset="1" stop-color="#52e5ff"/>
+						</linearGradient>
+						<filter id="packet-glow" x="-250%" y="-250%" width="500%" height="500%">
+							<feGaussianBlur stdDeviation="4" result="blur"/>
+							<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+						</filter>
+					</defs>
+					<g id="connection-lines"></g>
+					<g id="traffic-packets"></g>
+				</svg>
+
+				<div class="network-grid">
+					<section class="endpoint-column source-column" aria-labelledby="consumer-title">
+						<header class="column-header">
+							<div>
+								<p class="column-kicker">AI estate</p>
+								<h2 id="consumer-title">Consumers</h2>
+							</div>
+							<span class="endpoint-count">05</span>
+						</header>
+
+						<div class="node-list source-list" role="group" aria-label="Traffic origins">
+							<button class="endpoint-node source-node is-selected" type="button" data-source="users" aria-pressed="true">
+								<span class="node-icon cyan" aria-hidden="true">
+									<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-4 2.7-6 6.5-6s6 2 6.5 6M18.5 7.5l1.2 1.2 2.3-2.5"/></svg>
+								</span>
+								<span class="node-copy"><strong>Users</strong><small>Prompts &amp; sessions</small></span>
+								<span class="connection-port port-out" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node source-node" type="button" data-source="agents" aria-pressed="false">
+								<span class="node-icon violet" aria-hidden="true">
+									<svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3"/><path d="M9 12h.01M15 12h.01M9 15h6M12 7V4M10 4h4"/></svg>
+								</span>
+								<span class="node-copy"><strong>Agents</strong><small>A2A · REST · HTTP</small></span>
+								<span class="connection-port port-out" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node source-node" type="button" data-source="mcps" aria-pressed="false">
+								<span class="node-icon magenta mcp-icon" aria-hidden="true">M</span>
+								<span class="node-copy"><strong>MCPs</strong><small>Tools &amp; resources</small></span>
+								<span class="connection-port port-out" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node source-node" type="button" data-source="tools" aria-pressed="false">
+								<span class="node-icon amber" aria-hidden="true">
+									<svg viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0-5-5l2.3 2.3-2 2-2.3-2.3a4 4 0 0 0 5 5L4 17l3 3 7.5-8.5a4 4 0 0 0 5-5l-2.3 2.3-2-2Z"/></svg>
+								</span>
+								<span class="node-copy"><strong>Tools</strong><small>OpenAPI · functions</small></span>
+								<span class="connection-port port-out" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node source-node" type="button" data-source="models" aria-pressed="false">
+								<span class="node-icon blue" aria-hidden="true">
+									<svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/><circle cx="12" cy="12" r="4"/></svg>
+								</span>
+								<span class="node-copy"><strong>Models</strong><small>LLM &amp; SLM APIs</small></span>
+								<span class="connection-port port-out" aria-hidden="true"></span>
+							</button>
+						</div>
+					</section>
+
+					<section class="gateway-column" aria-labelledby="gateway-title">
+						<div class="gateway-card" id="gateway-card">
+							<span class="connection-port gateway-port gateway-ingress" id="gateway-ingress" aria-hidden="true"></span>
+							<span class="connection-port gateway-port gateway-egress" id="gateway-egress" aria-hidden="true"></span>
+
+							<header class="gateway-header">
+								<span class="gateway-logo"><img src="assets/api-management.png" alt=""></span>
+								<div>
+									<p>Azure API Management</p>
+									<h2 id="gateway-title">AI Gateway</h2>
+								</div>
+								<span class="live-badge"><i aria-hidden="true"></i> Live</span>
+							</header>
+
+							<div class="gateway-processor" id="gateway-processor">
+								<div class="processor-visual" aria-hidden="true">
+									<span></span><span></span><span></span><span></span><span></span>
+								</div>
+								<div class="processor-copy">
+									<span id="phase-label">Ready to mediate</span>
+									<strong id="route-label">Users → Microsoft Foundry</strong>
+								</div>
+								<div class="route-counter">
+									<strong id="route-count">1,284</strong>
+									<span>governed routes</span>
+								</div>
+							</div>
+
+							<div class="policy-heading">
+								<span>Policy pipeline</span>
+								<small>Click to bypass / enforce</small>
+							</div>
+
+							<div class="policy-stack" role="group" aria-label="Gateway policies">
+								<button class="policy-button" type="button" data-policy="identity" data-policy-label="Identity verified" aria-pressed="true">
+									<span class="policy-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2"/></svg></span>
+									<span><strong>Identity</strong><small>AuthN / AuthZ</small></span>
+									<i aria-hidden="true"></i>
+								</button>
+								<button class="policy-button" type="button" data-policy="safety" data-policy-label="Content checked" aria-pressed="true">
+									<span class="policy-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 20 6v5c0 5-3 8.3-8 10-5-1.7-8-5-8-10V6Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg></span>
+									<span><strong>Safety</strong><small>Prompt protection</small></span>
+									<i aria-hidden="true"></i>
+								</button>
+								<button class="policy-button" type="button" data-policy="tokens" data-policy-label="Quota applied" aria-pressed="true">
+									<span class="policy-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M9 9.5h4.5a2 2 0 0 1 0 4H10.5a2 2 0 0 0 0 4H15M12 7v2.5M12 17.5V20"/></svg></span>
+									<span><strong>Tokens</strong><small>Limits &amp; quotas</small></span>
+									<i aria-hidden="true"></i>
+								</button>
+								<button class="policy-button" type="button" data-policy="cache" data-policy-label="Cache evaluated" aria-pressed="true">
+									<span class="policy-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span>
+									<span><strong>Cache</strong><small>Semantic lookup</small></span>
+									<i aria-hidden="true"></i>
+								</button>
+								<button class="policy-button policy-wide" type="button" data-policy="telemetry" data-policy-label="Trace emitted" aria-pressed="true">
+									<span class="policy-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 18V9M10 18V5M16 18v-7M22 18V3"/><path d="M2 18h21"/></svg></span>
+									<span><strong>Observability</strong><small>Logs · metrics · traces</small></span>
+									<i aria-hidden="true"></i>
+								</button>
+							</div>
+
+							<footer class="gateway-footer">
+								<span><i class="status-check" aria-hidden="true">✓</i><strong id="policy-count">5</strong> policies enforced</span>
+								<span>Keyless · multi-cloud</span>
+							</footer>
+						</div>
+					</section>
+
+					<section class="endpoint-column provider-column" aria-labelledby="provider-title">
+						<header class="column-header">
+							<div>
+								<p class="column-kicker">Any environment</p>
+								<h2 id="provider-title">AI backends</h2>
+							</div>
+							<span class="endpoint-count">05</span>
+						</header>
+
+						<div class="node-list provider-list" role="group" aria-label="AI backend providers">
+							<button class="endpoint-node provider-node is-selected" type="button" data-provider="foundry" aria-pressed="true">
+								<span class="provider-logo"><img src="assets/microsoft-foundry.png" alt=""></span>
+								<span class="node-copy"><strong>Microsoft Foundry</strong><small>Models · agents · tools</small></span>
+								<span class="provider-tag">Primary</span>
+								<span class="connection-port port-in" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node provider-node" type="button" data-provider="bedrock" aria-pressed="false">
+								<span class="provider-logo dark-logo"><img src="assets/aws-bedrock.png" alt=""></span>
+								<span class="node-copy"><strong>AWS Bedrock</strong><small>Foundation models</small></span>
+								<span class="connection-port port-in" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node provider-node" type="button" data-provider="vertex" aria-pressed="false">
+								<span class="provider-logo"><img src="assets/vertex-ai.png" alt=""></span>
+								<span class="node-copy"><strong>Vertex AI</strong><small>Models &amp; agents</small></span>
+								<span class="connection-port port-in" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node provider-node" type="button" data-provider="local" aria-pressed="false">
+								<span class="provider-logo local-logo" aria-hidden="true">
+									<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="7" rx="2"/><rect x="4" y="14" width="16" height="7" rx="2"/><path d="M8 6.5h.01M8 17.5h.01M12 6.5h5M12 17.5h5"/></svg>
+								</span>
+								<span class="node-copy"><strong>Local AI</strong><small>On-prem · edge</small></span>
+								<span class="connection-port port-in" aria-hidden="true"></span>
+							</button>
+
+							<button class="endpoint-node provider-node" type="button" data-provider="other" aria-pressed="false">
+								<span class="provider-logo other-logo" aria-hidden="true">
+									<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>
+								</span>
+								<span class="node-copy"><strong>Any endpoint</strong><small>OpenAI-compatible · custom</small></span>
+								<span class="connection-port port-in" aria-hidden="true"></span>
+							</button>
+						</div>
+					</section>
+				</div>
+
+				<div class="trace-console" aria-label="Current request trace">
+					<div class="trace-message">
+						<span class="trace-pulse" aria-hidden="true"></span>
+						<span id="trace-message">Waiting for the next governed request</span>
+					</div>
+					<ol class="trace-stages" aria-hidden="true">
+						<li data-stage="ingress"><span>1</span>Ingress</li>
+						<li data-stage="policies"><span>2</span>Policies</li>
+						<li data-stage="route"><span>3</span>Route</li>
+						<li data-stage="response"><span>4</span>Response</li>
+					</ol>
+					<div class="trace-metric"><strong id="latency-value">—</strong><span>ms</span></div>
+				</div>
+			</section>
+
+			<footer class="slide-footer">
+				<p><strong>Governance without lock-in.</strong> One policy plane for models, MCP tools, and agents.</p>
+				<div class="capability-list" aria-label="Gateway capabilities">
+					<span>Governance</span><span>Security &amp; safety</span><span>Observability</span><span>Scalability</span><span>Velocity</span>
+				</div>
+				<span class="slide-number">01 / 04</span>
+			</footer>
+		</section>
+
+		<section class="slide pipeline-slide" id="slide-pipeline" data-deck-slide="pipeline" aria-labelledby="pipeline-slide-title" hidden>
+			<header class="slide-header">
+				<div class="product-line">
+					<span class="microsoft-mark" aria-hidden="true">
+						<span></span><span></span><span></span><span></span>
+					</span>
+					<span>Azure API Management</span>
+					<span class="product-divider" aria-hidden="true"></span>
+					<strong>Policy engine</strong>
+				</div>
+
+				<div class="slide-controls" aria-label="Pipeline controls">
+					<button class="control-button" id="pipeline-replay" type="button">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 8a7 7 0 0 1 11.7-1L20 9M4 15l2.2 2a7 7 0 0 0 11.7-1"/></svg>
+						<span>Replay request</span>
+					</button>
+					<button class="icon-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" title="Full screen (F)">
+						<svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+						<svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+					</button>
+				</div>
+
+				<div class="title-row">
+					<h1 id="pipeline-slide-title">One request.<br><span>Two policy planes.</span></h1>
+					<p>Core API policies and AI-specific controls execute together—before and after the model call.</p>
+				</div>
+			</header>
+
+			<section class="pipeline-stage" id="policy-pipeline" aria-label="Animated request traversing API and AI policies">
+				<div class="pipeline-stage-heading">
+					<div class="pipeline-legend" aria-label="Policy type legend">
+						<span><i class="legend-swatch core" aria-hidden="true"></i> Core API policy</span>
+						<span><i class="legend-swatch ai" aria-hidden="true"></i> AI-specific policy</span>
+					</div>
+					<span class="pipeline-caption">Policy order is intentional</span>
+				</div>
+
+				<div class="policy-journey" id="policy-journey">
+					<article class="journey-endpoint journey-client" data-pipeline-origin>
+						<span class="journey-icon" aria-hidden="true">
+							<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 10h8M8 14h5"/></svg>
+						</span>
+						<p>AI application</p>
+						<strong>POST /chat</strong>
+						<small>Prompt + identity</small>
+					</article>
+
+					<div class="pipeline-lanes">
+						<section class="pipeline-lane inbound-lane" aria-labelledby="inbound-title">
+							<header>
+								<span class="lane-direction">01</span>
+								<div><strong id="inbound-title">Inbound request</strong><small>Authenticate · control · inspect</small></div>
+								<span class="direction-arrow" aria-hidden="true">→</span>
+							</header>
+							<ol class="pipeline-policy-list">
+								<li class="pipeline-policy core-policy" data-pipeline-step="1" data-status="Microsoft Entra token validated">
+									<span class="policy-kind">API</span><strong>Identity</strong><code>validate-azure-ad-token</code>
+								</li>
+								<li class="pipeline-policy ai-policy" data-pipeline-step="2" data-status="Semantic cache checked for a safe reuse">
+									<span class="policy-kind">AI</span><strong>Cache lookup</strong><code>llm-semantic-cache-lookup</code>
+								</li>
+								<li class="pipeline-policy core-policy" data-pipeline-step="3" data-status="Caller request rate accepted">
+									<span class="policy-kind">API</span><strong>Call rate</strong><code>rate-limit-by-key</code>
+								</li>
+								<li class="pipeline-policy ai-policy" data-pipeline-step="4" data-status="Token rate and quota accepted">
+									<span class="policy-kind">AI</span><strong>Token limit</strong><code>llm-token-limit</code>
+								</li>
+								<li class="pipeline-policy ai-policy" data-pipeline-step="5" data-status="Prompt passed content and attack checks">
+									<span class="policy-kind">AI</span><strong>Prompt safety</strong><code>llm-content-safety</code>
+								</li>
+								<li class="pipeline-policy ai-policy" data-pipeline-step="6" data-status="Token metric dimensions registered">
+									<span class="policy-kind">AI</span><strong>Token metrics</strong><code>llm-emit-token-metric</code>
+								</li>
+							</ol>
+						</section>
+
+						<section class="pipeline-lane outbound-lane" aria-labelledby="outbound-title">
+							<header>
+								<span class="lane-direction">02</span>
+								<div><strong id="outbound-title">Outbound response</strong><small>Inspect · store · observe</small></div>
+								<span class="direction-arrow" aria-hidden="true">←</span>
+							</header>
+							<ol class="pipeline-policy-list">
+								<li class="pipeline-policy core-policy" data-pipeline-step="11" data-status="Governance headers attached to the response">
+									<span class="policy-kind">API</span><strong>Response headers</strong><code>set-header</code>
+								</li>
+								<li class="pipeline-policy core-policy" data-pipeline-step="10" data-status="Request trace correlated end to end">
+									<span class="policy-kind">API</span><strong>Trace</strong><code>trace</code>
+								</li>
+								<li class="pipeline-policy ai-policy" data-pipeline-step="9" data-status="Successful completion stored in semantic cache">
+									<span class="policy-kind">AI</span><strong>Cache store</strong><code>llm-semantic-cache-store</code>
+								</li>
+								<li class="pipeline-policy ai-policy" data-pipeline-step="8" data-status="Completion passed outbound content checks">
+									<span class="policy-kind">AI</span><strong>Output safety</strong><code>llm-content-safety</code>
+								</li>
+							</ol>
+						</section>
+					</div>
+
+					<article class="journey-endpoint journey-backend" data-pipeline-step="7" data-status="Request forwarded to the selected model backend">
+						<span class="journey-icon backend-icon"><img src="assets/microsoft-foundry.png" alt=""></span>
+						<p>Model backend</p>
+						<strong>Microsoft Foundry</strong>
+						<small>Managed identity</small>
+					</article>
+
+					<div class="pipeline-packet" id="pipeline-packet" aria-hidden="true">
+						<span></span>
+					</div>
+				</div>
+
+				<div class="pipeline-status" aria-live="polite">
+					<div><span class="trace-pulse" aria-hidden="true"></span><strong id="pipeline-status-label">Ready to send a request</strong></div>
+					<div class="pipeline-result"><span id="pipeline-step-count">0 / 11</span><strong id="pipeline-result">Pending</strong></div>
+				</div>
+			</section>
+
+			<footer class="slide-footer">
+				<p><strong>Defense in depth.</strong> AI policies extend—not replace—the established API policy pipeline.</p>
+				<div class="capability-list"><span>Inbound</span><span>Backend</span><span>Outbound</span><span>On error</span></div>
+				<span class="slide-number">02 / 04</span>
+			</footer>
+		</section>
+
+		<section class="slide catalog-slide" id="slide-catalog" data-deck-slide="catalog" aria-labelledby="catalog-slide-title" hidden>
+			<header class="slide-header">
+				<div class="product-line">
+					<span class="microsoft-mark" aria-hidden="true">
+						<span></span><span></span><span></span><span></span>
+					</span>
+					<span>Azure API Management</span>
+					<span class="product-divider" aria-hidden="true"></span>
+					<strong>Policy catalog</strong>
+				</div>
+
+				<div class="slide-controls">
+					<a class="control-button policy-reference-link" href="https://learn.microsoft.com/azure/api-management/api-management-policies" target="_blank" rel="noreferrer">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg>
+						<span>Policy reference</span>
+					</a>
+					<button class="icon-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" title="Full screen (F)">
+						<svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+						<svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+					</button>
+				</div>
+
+				<div class="title-row">
+					<h1 id="catalog-slide-title">The policy toolbox.<br><span>AI + API.</span></h1>
+					<p>Five AI-specific policies work alongside the core policies teams already use to secure and operate APIs.</p>
+				</div>
+			</header>
+
+			<section class="policy-catalog" aria-label="Azure API Management policy catalog">
+				<section class="catalog-column ai-catalog" aria-labelledby="ai-policy-title">
+					<header class="catalog-heading">
+						<div><span class="catalog-index ai">AI</span><div><h2 id="ai-policy-title">AI gateway policies</h2><p>Complete current policy family</p></div></div>
+						<strong>05</strong>
+					</header>
+					<div class="catalog-grid ai-policy-grid" id="ai-policy-grid"></div>
+				</section>
+
+				<section class="catalog-column core-catalog" aria-labelledby="core-policy-title">
+					<header class="catalog-heading">
+						<div><span class="catalog-index core">API</span><div><h2 id="core-policy-title">Common core policies</h2><p>Frequently used building blocks</p></div></div>
+						<strong>10</strong>
+					</header>
+					<div class="catalog-grid core-policy-grid" id="core-policy-grid"></div>
+				</section>
+			</section>
+
+			<footer class="slide-footer">
+				<p><strong>Current policy names.</strong> Verified against Microsoft Learn on <time datetime="2026-09-02">2 September 2026</time>.</p>
+				<div class="policy-source-note"><span class="policy-kind ai">AI</span> LLM-aware <span class="policy-kind core">API</span> General gateway</div>
+				<span class="slide-number">03 / 04</span>
+			</footer>
+		</section>
+
+		<section class="slide rank-slide" id="slide-rank" data-deck-slide="rank" aria-labelledby="rank-slide-title" hidden>
+			<header class="slide-header">
+				<div class="product-line">
+					<span class="microsoft-mark" aria-hidden="true">
+						<span></span><span></span><span></span><span></span>
+					</span>
+					<span>Azure API Management</span>
+					<span class="product-divider" aria-hidden="true"></span>
+					<strong>Policy workshop</strong>
+				</div>
+
+				<div class="slide-controls">
+					<button class="control-button" id="rank-reset" type="button">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5.1 15a8 8 0 0 0 13.4 2M18.9 9A8 8 0 0 0 5.5 7"/></svg>
+						<span>Reset board</span>
+					</button>
+					<button class="icon-button" data-fullscreen-toggle type="button" aria-label="Enter full screen" title="Full screen (F)">
+						<svg class="expand-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+						<svg class="collapse-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+					</button>
+				</div>
+
+				<div class="title-row">
+					<h1 id="rank-slide-title">Build your baseline.<br><span>Rank every policy.</span></h1>
+					<p>Drag a policy into a layer—or select a card, then activate the destination layer.</p>
+				</div>
+			</header>
+
+			<section class="rank-workspace" aria-label="Interactive policy ranking board">
+				<div class="rank-summary">
+					<div><span class="trace-pulse" aria-hidden="true"></span><strong id="rank-progress-label">0 / 15 ranked</strong></div>
+					<div class="rank-progress" role="progressbar" aria-label="Policies ranked" aria-valuemin="0" aria-valuemax="15" aria-valuenow="0"><span id="rank-progress-fill"></span></div>
+					<p>Tip: press Enter to select a card, then Enter on a layer.</p>
+				</div>
+
+				<section class="policy-tray" aria-labelledby="policy-tray-title">
+					<header><div><span>Source tray</span><h2 id="policy-tray-title">Unranked policies <strong id="unranked-policy-count">15</strong></h2></div><span>AI + core API</span></header>
+					<div class="rank-card-lane tray-lane" id="rank-unranked" data-rank-zone="unranked" tabindex="0" role="group" aria-label="Unranked policies"></div>
+				</section>
+
+				<div class="rank-board" aria-label="Policy priority layers">
+					<section class="rank-layer must-layer">
+						<button class="rank-layer-label" type="button" data-rank-target="must" aria-label="Move selected policy to Must have">
+							<span class="rank-order">01</span><strong>Must have</strong><small>Baseline guardrails</small>
+						</button>
+						<div class="rank-card-lane" data-rank-zone="must" tabindex="0" role="group" aria-label="Must have policies"></div>
+					</section>
+
+					<section class="rank-layer nice-layer">
+						<button class="rank-layer-label" type="button" data-rank-target="nice" aria-label="Move selected policy to Nice to have">
+							<span class="rank-order">02</span><strong>Nice to have</strong><small>Optimize &amp; observe</small>
+						</button>
+						<div class="rank-card-lane" data-rank-zone="nice" tabindex="0" role="group" aria-label="Nice to have policies"></div>
+					</section>
+
+					<section class="rank-layer sometimes-layer">
+						<button class="rank-layer-label" type="button" data-rank-target="sometimes" aria-label="Move selected policy to Sometimes">
+							<span class="rank-order">03</span><strong>Sometimes</strong><small>Scenario dependent</small>
+						</button>
+						<div class="rank-card-lane" data-rank-zone="sometimes" tabindex="0" role="group" aria-label="Sometimes policies"></div>
+					</section>
+				</div>
+			</section>
+
+			<footer class="slide-footer">
+				<p><strong>Your architecture, your priorities.</strong> Rankings are saved in this browser.</p>
+				<div class="policy-source-note"><span class="policy-kind ai">AI</span> AI-specific <span class="policy-kind core">API</span> Core policy</div>
+				<span class="slide-number">04 / 04</span>
+			</footer>
+		</section>
+
+		<nav class="deck-navigation" aria-label="Deck slides">
+			<a href="#gateway" data-slide-target="gateway" aria-current="page"><span>01</span><strong>Gateway</strong></a>
+			<a href="#pipeline" data-slide-target="pipeline"><span>02</span><strong>Policy flow</strong></a>
+			<a href="#catalog" data-slide-target="catalog"><span>03</span><strong>Catalog</strong></a>
+			<a href="#rank" data-slide-target="rank"><span>04</span><strong>Rank</strong></a>
+		</nav>
+	</main>
+
+	<div class="sr-only" id="live-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>
