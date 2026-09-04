@@ -7,9 +7,10 @@
 <p align="center">A demo of the beautiful things we can achieve when we combine all of what Microsoft Foundry has to offer.</p>
 
 <!-- latest-feature:start -->
-## Latest Feature: Foundry Project Resource Inspection
-
-Cosmopilot can inspect the connections and model deployments available to a Microsoft Foundry project through the Azure AI Projects SDK. The [connection helpers](src/connections.py) support lookup by name, default-connection resolution, and filtered listing. The [deployment helpers](src/deployments.py) support lookup by name and filtering by publisher, model, or deployment type. Both use `DefaultAzureCredential` and the configured `AZURE_AI_PROJECT_ENDPOINT`.
+> [!TIP]
+> **Latest feature: Foundry project resource inspection**
+>
+> Cosmopilot can inspect the connections and model deployments available to a Microsoft Foundry project through the Azure AI Projects SDK. The [connection helpers](src/connections.py) support lookup by name, default-connection resolution, and filtered listing. The [deployment helpers](src/deployments.py) support lookup by name and filtering by publisher, model, or deployment type. Both use `DefaultAzureCredential` and the configured `AZURE_AI_PROJECT_ENDPOINT`.
 <!-- latest-feature:end -->
 
 <p align="center">
