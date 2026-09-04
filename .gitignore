@@ -11,5 +11,8 @@ __pycache__/
 # VS Code (local, machine-specific interpreter selection)
 .vscode/
 
+# GitHub Agentic Workflows compiler cache
+.github/aw/actions-lock.json
+
 # macOS
 .DS_Store
