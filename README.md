@@ -8,9 +8,9 @@
 
 <!-- latest-feature:start -->
 > [!TIP]
-> **Latest feature: Foundry project resource inspection**
+> **Latest feature: Refactoring assessment skill**
 >
-> Cosmopilot can inspect the connections and model deployments available to a Microsoft Foundry project through the Azure AI Projects SDK. The [connection helpers](src/connections.py) support lookup by name, default-connection resolution, and filtered listing. The [deployment helpers](src/deployments.py) support lookup by name and filtering by publisher, model, or deployment type. Both use `DefaultAzureCredential` and the configured `AZURE_AI_PROJECT_ENDPOINT`.
+> Cosmopilot ships a [refactoring skill](.github/skills/refactoring/SKILL.md) that assesses and improves clean-code quality on request. It defines an assessment workflow and a scored clean-code rubric (obvious to other programmers, no harmful duplication, minimal moving parts, passes all tests), then recommends the smallest behavior-preserving refactor backed by verified evidence. A dated [codebase assessment](.github/skills/refactoring/references/codebase-assessment.md) records the repository baseline at the time the skill was created.
 <!-- latest-feature:end -->
 
 <p align="center">
