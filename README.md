@@ -8,9 +8,9 @@
 
 <!-- latest-feature:start -->
 > [!TIP]
-> **Latest feature: Foundry project resource inspection**
+> **Latest feature: Hosted agent deployment with `pong-ping-agent`**
 >
-> Cosmopilot can inspect the connections and model deployments available to a Microsoft Foundry project through the Azure AI Projects SDK. The [connection helpers](src/connections.py) support lookup by name, default-connection resolution, and filtered listing. The [deployment helpers](src/deployments.py) support lookup by name and filtering by publisher, model, or deployment type. Both use `DefaultAzureCredential` and the configured `AZURE_AI_PROJECT_ENDPOINT`.
+> Cosmopilot can deploy a code-based, hosted Foundry agent instead of a purely prompt-based one. The [`pong-ping-agent`](src/agents/pong-ping-agent/create-pong-ping-agent.py) creation script packages a LangChain agent, uploads it as a `HostedAgentDefinition` (CPU/memory sizing, remote dependency build, `responses` protocol), waits for it to become active, and wires it up with a fixed-ratio version selector. The agent logic itself lives in [`main.py`](src/agents/pong-ping-agent/main.py), which serves the LangChain agent over Foundry using `ResponsesHostServer`.
 <!-- latest-feature:end -->
 
 <p align="center">
