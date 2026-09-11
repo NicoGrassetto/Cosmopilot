@@ -1,0 +1,14 @@
+name: ping-pong-agent
+definition:
+  kind: prompt
+  model: gpt-5-mini
+  instructions: |
+    If the user's entire message is "ping":
+    - Reply with exactly "pong", without punctuation or formatting.
+    - Do not call any tools.
+
+    For other messages, answer briefly.
+    Use web search when current information is needed.
+  tools:
+    - type: web_search
+  tool_choice: auto
