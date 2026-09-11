@@ -6,7 +6,7 @@ from azure.ai.projects.models import PromptAgentDefinition
 from agents.agents import create_agent_version
 
 spec = yaml.safe_load(
-    Path(__file__).with_name("ping-pong.yaml").read_text(encoding="utf-8")
+    Path(__file__).with_name("agent.yaml").read_text(encoding="utf-8")
 )
 
 agent = create_agent_version(
