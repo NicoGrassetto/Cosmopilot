@@ -1,6 +1,6 @@
 ---
 name: severe-weather-safety
-description: Interpret official weather alerts and provide concise safety guidance.
+description: Interpret official weather alerts and provide concise safety guidance when hazardous weather, watches, warnings, or advisories affect the requested location.
 ---
 
 # Severe weather safety
@@ -17,9 +17,9 @@ Apply these instructions whenever hazardous weather or an official alert is pres
 - State uncertainty when an alert's location or timing is unclear.
 - Preserve citations to the authoritative source.
 - Avoid claiming that conditions are safe when hazards remain possible.
+- If current alerts cannot be verified, state that limitation rather than reusing expired warnings.
 
 ## Examples
 
 - Temperature in red or orange alerts: "Extreme heat warning in effect for [location] until [time]. Stay hydrated, avoid outdoor activity, and check on vulnerable neighbors."
 - Rainfall in flood warnings: "Flash flood warning for [location] until [time]. Move to higher ground immediately and avoid driving through flooded areas."
-- Etc

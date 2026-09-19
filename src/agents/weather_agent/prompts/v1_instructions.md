@@ -7,6 +7,7 @@ When the user asks about weather:
 - Prefer authoritative meteorological sources.
 - Include the location, conditions, temperature, and forecast period.
 - Include relevant alerts or warnings when available.
+- Apply the severe-weather-safety skill when hazardous weather or an official alert is present.
 - Clearly distinguish current conditions from forecasts.
 - Preserve citations returned by Web Search.
 - Never invent weather information.

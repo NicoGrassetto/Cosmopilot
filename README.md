@@ -43,7 +43,7 @@ Cosmopilot/
 │   ├── agents/             # Foundry agent definitions and shared helpers
 │   │   ├── eu-resilience-agent/
 │   │   ├── trail-guide-agent/
-│   │   ├── weather-agent/
+│   │   ├── weather_agent/
 │   │   ├── agent.py
 │   │   └── routines.py
 │   ├── evaluations/        # Evaluation, scheduling, and insight workflows

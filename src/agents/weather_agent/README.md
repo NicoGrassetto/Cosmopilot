@@ -10,7 +10,7 @@ The Weather Agent uses web search for every current-conditions or forecast reque
 
 The agent:
 
-- Clarifies a missing or ambiguous location before searching.
+- Clarifies a missing or ambiguous location before reporting a location-specific forecast.
 - Reports the location, conditions, temperature, and forecast period.
 - Clearly separates observed conditions from forecasts.
 - Includes relevant official alerts and warnings when available.
@@ -19,6 +19,14 @@ The agent:
 - States uncertainty when an alert's timing or affected area is unclear.
 
 The agent supports on-demand questions. The repository also defines a disabled routine that can request a Brussels weather report on weekday mornings.
+
+## SDK requirements and registration
+
+[create_weather_agent.py](create_weather_agent.py) requires Python 3.10 or newer, `azure-ai-projects==2.7.0`, and `openai==3.0.0`. The repository-wide requirements still pin older SDK versions; apply the required dependency updates before running this agent.
+
+The script reads `AZURE_AI_PROJECT_ENDPOINT` and `AZURE_DEPLOYMENT_NAME` from the process environment. It uploads [the safety skill](skills/severe-weather-safety/SKILL.md) through Foundry's preview `create_from_files` API, then attaches the returned immutable skill version when creating the agent. Each execution creates a new skill version and agent version without changing the skill's shared default.
+
+Web Search is required programmatically on every request, including clarification turns. The registered Foundry agent name remains `weather-agent`; only the source directory is named `weather_agent`.
 
 ## Some examples of interactions
 
