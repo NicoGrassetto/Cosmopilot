@@ -8,9 +8,9 @@
 
 <!-- latest-feature:start -->
 > [!TIP]
-> **Latest feature: Foundry project resource inspection**
+> **Latest feature: Weather agent skill integration**
 >
-> Cosmopilot can inspect the connections and model deployments available to a Microsoft Foundry project through the Azure AI Projects SDK. The [connection helpers](src/connections.py) support lookup by name, default-connection resolution, and filtered listing. The [deployment helpers](src/deployments.py) support lookup by name and filtering by publisher, model, or deployment type. Both use `DefaultAzureCredential` and the configured `AZURE_AI_PROJECT_ENDPOINT`.
+> The [weather agent](src/agents/weather_agent/create_weather_agent.py) now registers its severe-weather-safety skill directly with Microsoft Foundry through the preview `create_from_files` API, then attaches the returned skill version to the agent definition via `SkillReference`. Each run creates a new skill version and agent version without changing the skill's shared default, and the updated [instructions](src/agents/weather_agent/prompts/v1_instructions.md) direct the agent to apply the [safety skill](src/agents/weather_agent/skills/severe-weather-safety/SKILL.md) whenever hazardous weather or an official alert is present.
 <!-- latest-feature:end -->
 
 <p align="center">
