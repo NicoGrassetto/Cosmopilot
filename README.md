@@ -151,7 +151,7 @@ The [ping-pong declaration](src/agents/ping_pong_agent/agent.yaml) uses Microsof
 
 The instructions request exactly `ping` when the entire user message is `pong`, ignoring case and surrounding whitespace, and no text for other input. This is prompt-directed model behavior, not a deterministic Python response rule.
 
-The [deployment script](src/agents/ping_pong_agent/create_ping_pong_agent.py) separately packages and registers the application as a hosted agent. See the [ping-pong guide](src/agents/ping_pong_agent/README.md) for its isolated runtime environment, offline packaging, and explicit deployment command. The MAF YAML loader is experimental and its hosting integration is beta; their runtime dependencies are separate from the repository's Projects SDK `2.7.0` environment. The infrastructure-only role of `azure.yaml` is unchanged.
+The [deployment script](src/agents/ping_pong_agent/create_ping_pong_agent.py) separately packages (`--package <zip>`) or explicitly deploys (`--deploy`) the application as a hosted agent. Deployment waits for the uploaded version to become active, then routes its Responses endpoint to that version. See the [ping-pong guide](src/agents/ping_pong_agent/README.md) for its isolated runtime environment, local testing, configuration prerequisites, and deployment commands. The MAF YAML loader is experimental and its hosting integration is beta; their runtime dependencies are incompatible with the repository's Projects SDK `2.7.0` pin and must stay in a separate environment. The infrastructure-only role of `azure.yaml` is unchanged.
 
 ---
 

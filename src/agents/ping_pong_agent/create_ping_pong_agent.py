@@ -1,26 +1,13 @@
 from __future__ import annotations
 
-# import argparse
-# import json
-# import logging
 import os
 from pathlib import Path
-# from tempfile import TemporaryDirectory
-# from time import monotonic, perf_counter, sleep
-# from typing import Any
-# from zipfile import ZIP_DEFLATED, ZipFile
 
 from agent_framework_declarative import AgentFactory
 from agent_framework_foundry_hosting import ResponsesHostServer
-# from azure.ai.projects import AIProjectClient, models
 from azure.identity import DefaultAzureCredential
-# from ruamel.yaml import YAML
-
-# logger = logging.getLogger(__name__)
 
 AGENT_DIR = Path(__file__).resolve().parent
-# RUNTIME_FILES = ("run_ping_pong_agent.py", "agent.yaml", "requirements.txt")
-
 
 def main() -> None:
     project_endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
