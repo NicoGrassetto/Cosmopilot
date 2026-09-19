@@ -1,36 +1,51 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
 
-from agent_framework_declarative import AgentFactory
-from agent_framework_foundry_hosting import ResponsesHostServer
+from azure.ai.projects import AIProjectClient, models
 from azure.identity import DefaultAzureCredential
 
 AGENT_DIR = Path(__file__).resolve().parent
 
-def main() -> None:
-    project_endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
-    with DefaultAzureCredential() as credential:
-        factory = AgentFactory(
-            client=None,  # Let the YAML model declaration select the native Foundry client.
-            bindings=None,  # Do not bind any local function tools.
-            connections=None,  # Do not provide named connection overrides.
-            client_kwargs={  # Supply authentication and configuration outside the YAML document.
-                "credential": credential,
-                "project_endpoint": project_endpoint,
-            },
-            additional_mappings=None,  # Use the built-in provider mappings.
-            default_provider="Foundry",  # Resolve Foundry models through FoundryChatClient.
-            safe_mode=True,  # Disallow YAML expressions from accessing environment variables.
-            env_file_path=os.devnull,  # Do not implicitly load a workspace dotenv file.
-            env_file_encoding="utf-8",  # Preserve the factory's default text encoding.
-        )
-        agent = factory.create_agent_from_yaml_path(
-            yaml_path=AGENT_DIR / "agent.yaml",  # Load the native declaration independently of the working directory.
-        )
-        ResponsesHostServer(agent).run()
 
+def main() -> None:
+    with TemporaryDirectory() as directory:
+        package_path = Path(directory) / "ping-pong-agent.zip"
+
+        with ZipFile(package_path, "w") as archive:
+            for filename in ("main.py", "agent.yaml", "requirements.txt"):
+                archive.write(AGENT_DIR / filename, arcname=filename)
+
+        with (
+            DefaultAzureCredential() as credential,
+            AIProjectClient(
+                endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+                credential=credential,
+                allow_preview=True,
+            ) as client,
+            package_path.open("rb") as code,
+        ):
+            version = client.agents.create_version_from_code(
+                agent_name="ping-pong-agent",
+                definition=models.HostedAgentDefinition(
+                    cpu="0.5",
+                    memory="1Gi",
+                    code_configuration=models.CodeConfiguration(
+                        runtime="python_3_13",
+                        entry_point=["python", "main.py"],
+                        dependency_resolution="remote_build",
+                    ),
+                    protocol_versions=[
+                        models.ProtocolVersionRecord(
+                            protocol="responses",
+                            version="1.0.0",
+                        )
+                    ],
+                ),
+                code=code,
+            )
+            print(f"{version.name}: version={version.version}, status={version.status}")
 
 
 if __name__ == "__main__":
