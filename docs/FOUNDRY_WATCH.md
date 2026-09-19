@@ -218,7 +218,7 @@ A networked dry run should then confirm that the watcher:
 - Does not create an issue in dry-run mode.
 - Produces the same issue marker on repeated runs.
 
-For the current `azure-ai-projects==2.4.0` baseline, the `2.5.0` regression
+For the historical `azure-ai-projects==2.4.0` baseline, the `2.5.0` regression
 fixture should demonstrate that the report can identify relevant feature and
 adoption evidence, including routines pagination changes, optimization model
 renames, and the `openai>=3.0.0` dependency requirement.

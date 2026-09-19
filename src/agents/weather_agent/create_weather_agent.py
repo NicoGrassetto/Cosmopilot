@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 AGENT_NAME = "weather-agent"
 AGENT_DIR = Path(__file__).resolve().parent
 SKILL_NAME = "severe-weather-safety"
+ROUTINE_NAME = "weekday-weather-brussels"
 
 
 def create_weather_agent() -> models.AgentVersionDetails:
@@ -112,6 +113,39 @@ def create_weather_agent() -> models.AgentVersionDetails:
             "Created weather agent name=%s version=%s duration_ms=%.0f",
             agent.name,
             agent.version,
+            (perf_counter() - started) * 1000,
+        )
+
+        started = perf_counter()
+        logger.info(
+            "Creating or updating weather routine name=%s agent_name=%s enabled=%s",
+            ROUTINE_NAME,
+            agent.name,
+            True,
+        )
+        routine = client.beta.routines.create_or_update(
+            routine_name=ROUTINE_NAME,  # Preserve the existing named Brussels weather routine.
+            content_type="application/json",  # Submit the routine definition as JSON.
+            description="Provides a weekday morning weather report.",  # Preserve the existing description.
+            enabled=True,  # Enable the daily 09:30 Brussels schedule.
+            triggers={  # Preserve the existing single scheduled trigger.
+                "daily-morning": models.ScheduleRoutineTrigger(
+                    cron_expression="30 9 * * *",  # Preserve the existing daily 09:30 schedule.
+                    time_zone="Europe/Brussels",  # Interpret the schedule in Brussels local time.
+                ),
+            },
+            action=models.InvokeAgentResponsesApiRoutineAction(  # Invoke the weather agent through the Responses API.
+                agent_name=agent.name,  # Target the agent successfully created above.
+                agent_endpoint_id=None,  # Use the project-scoped name instead of a legacy endpoint.
+                input="Report today's weather for Brussels, Belgium.",  # Preserve the scheduled weather request.
+                conversation=None,  # Do not continue an existing conversation.
+            ),
+            authorization=None,  # Preserve the service's default dispatch authorization.
+        )
+        logger.info(
+            "Created or updated weather routine name=%s enabled=%s duration_ms=%.0f",
+            routine.name,
+            routine.enabled,
             (perf_counter() - started) * 1000,
         )
         return agent

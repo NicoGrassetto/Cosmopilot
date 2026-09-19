@@ -3,11 +3,11 @@
 This document explains how to design, run, automate, and operate evaluations in
 Microsoft Foundry. It is grounded in the packages pinned by this repository:
 
-- `azure-ai-projects==2.4.0`
+- `azure-ai-projects==2.7.0`
 - `azure-ai-evaluation==1.18.3`
-- `openai==2.53.0`
+- `openai==3.0.0`
 
-Last audited: August 10, 2026.
+Package pins updated: September 19, 2026. Evaluation guidance last audited: August 10, 2026.
 
 The APIs include stable and preview surfaces. Preview status is attached to the
 operation or feature, not inferred from the package version. Recheck the linked

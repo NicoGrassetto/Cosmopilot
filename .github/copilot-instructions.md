@@ -14,9 +14,14 @@
 - The source tree is not installed as a package. Set `PYTHONPATH=src` when running tests or modules that import `agents`, `evaluations`, `skills`, or `toolboxes`.
 - Prefer the Python standard library for common functionality such as logging rather than adding framework dependencies.
 
+## Agent Creation
+
+- Whenever the user asks to create, add, build, scaffold, or implement a new Microsoft Foundry agent, read and follow [the agent-creation skill](skills/create-foundry-agent/SKILL.md) before writing agent code.
+- This workflow applies to application agents, not VS Code custom agent definitions. It owns the layout, SDK version selection, and complete, commented SDK argument formatting for new agents.
+
 ## Microsoft Foundry
 
-- Use `azure-ai-projects==2.4.0`. The stable package includes preview features; do not replace it with the legacy 1.x SDK or add `azure-ai-agents`.
+- Use the `azure-ai-projects` version pinned in `requirements.txt` (currently `2.7.0`). For agent creation, follow the skill's latest-stable version selection and keep the dependency pin and this guideline synchronized. The stable package includes preview features; do not replace it with the legacy 1.x SDK or add `azure-ai-agents`.
 - Calls through `client.beta.*` already opt into preview behavior. For preview features exposed through stable clients, construct `AIProjectClient` with `allow_preview=True`.
 - Preview APIs can change between SDK releases. Preserve the repository's current typed models and method names, and update tests and relevant docs when changing an SDK version.
 - Authentication uses `DefaultAzureCredential`. Local development expects an Azure CLI login via `az login` or `azd auth login`.
@@ -31,6 +36,8 @@
 
 ## Tests
 
+- Whenever using a new SDK module or operation group under `client.*`, changing its method calls or parameters, or upgrading the SDK, read and follow [the SDK regression testing skill](skills/create-sdk-tests/SKILL.md).
+- That workflow requires `tests/test_<module_path>.py`, one pytest integration test function per public SDK method, coverage of every public parameter, and a readable public API inventory. No fixtures, private SDK methods, or private test helpers are allowed; keep setup and cleanup inside each test. Preserve unrelated existing unit tests.
 - Run tests from the repository root with `PYTHONPATH=src python -m pytest`.
 - Tests marked `integration` call live Azure services, create resources, can incur cost, and require a configured azd environment. Prefer narrow collection or unit checks unless live integration coverage is explicitly needed.
 - Run live integration tests with the azd environment injected, for example: `azd exec -- env PYTHONPATH=src python -m pytest -m integration`.
