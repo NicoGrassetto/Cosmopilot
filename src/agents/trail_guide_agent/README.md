@@ -10,6 +10,20 @@ The Adventure Works Trail Guide Agent provides practical, safety-focused hiking 
 
 Its responses provide specific gear guidance, clear safety precautions, and backup options when the preferred plan may not be suitable. The agent is designed to help users prepare and make better choices, not to replace local authorities, official trail notices, or professional medical and emergency advice.
 
+## Implementation
+
+[create_trail_guide_agent.py](create_trail_guide_agent.py) uses `azure-ai-projects==2.7.0` directly, without the shared agent helper module. It creates a stable prompt agent with no tools or runtime skills. The source directory is `trail_guide_agent`; the registered Foundry name remains `trail-guide-agent`.
+
+The [versioned prompt](prompts/v1_instructions.md) is loaded as UTF-8 relative to the script, independently of the working directory. The existing prompt-version metadata and model sampling defaults are preserved. `DefaultAzureCredential` retains its environment-sensitive credential-chain defaults.
+
+Set `AZURE_AI_PROJECT_ENDPOINT` and `AZURE_DEPLOYMENT_NAME` in the process environment and authenticate with Azure before running the creation script. It does not load `.env` automatically. With the repository virtual environment activated, run from the repository root:
+
+```bash
+python src/agents/trail_guide_agent/create_trail_guide_agent.py
+```
+
+This command creates a remote agent version. Lifecycle logs go to stderr; stdout contains only the created agent's name and version as JSON. Failures exit with status 1.
+
 ## Some examples of interactions
 
 ### Plan an appropriate hike

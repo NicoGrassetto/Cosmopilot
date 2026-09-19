@@ -42,7 +42,7 @@ Cosmopilot/
 ├── src/
 │   ├── agents/             # Foundry agent definitions and shared helpers
 │   │   ├── eu-resilience-agent/
-│   │   ├── trail-guide-agent/
+│   │   ├── trail_guide_agent/
 │   │   ├── weather_agent/
 │   │   ├── agent.py
 │   │   └── routines.py
