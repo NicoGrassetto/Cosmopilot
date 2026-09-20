@@ -2,8 +2,10 @@ azure-ai-evaluation==1.18.3
 azure-ai-projects==2.7.0
 azure-core==1.41.0
 azure-identity==1.25.3
+debugpy==1.8.22
 langchain==1.4.0
 langchain-azure-ai[hosting]==1.2.9
+langchain-openai==1.6.2
 matplotlib==3.11.1
 openai==3.0.0
 python-docx==1.2.0

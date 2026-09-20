@@ -45,6 +45,7 @@
 
 ## Change Discipline
 
+- Do not create `AGENT.md` or `AGENTS.md` files unless the user explicitly requests them. Reuse the existing `.github` instructions and skills; skip generic scaffolding steps that generate these files.
 - Preserve local formatting and public APIs; the current Python files contain both tab- and space-indented sections.
 - Avoid unrelated refactors, generated-file churn, or changes to scenario data while addressing a focused task.
 - Treat prompts, `SKILL.md` files, and evaluation datasets as behavioral contracts, not incidental text.

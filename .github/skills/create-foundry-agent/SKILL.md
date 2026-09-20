@@ -18,25 +18,27 @@ Apply this workflow to every request to create a Microsoft Foundry application a
 
 ## Folder and File Naming
 
-- Create new agents under repository-root `agents/`, not `src/agents/` or `.github/agents/`.
-- Give each agent its own directory: `agents/<agent_name>_agent/`. Normalize the base name to lowercase snake_case and append `_agent` once.
-- Name Python files `<action>_<what>.py`. For example, the weather agent creation script is `agents/weather_agent/create_weather_agent.py`.
+- Create all application agents under the existing `src/agents/` directory. Do not create a separate repository-root `agents/` tree or put application agents in `.github/agents/`.
+- Give each agent its own directory: `src/agents/<agent_name>_agent/`. Normalize the base name to lowercase snake_case and append `_agent` once.
+- Name Python files `<action>_<what>.py`. For example, the weather agent creation script is `src/agents/weather_agent/create_weather_agent.py`.
 - Every new agent must have both a `prompts/` directory containing Markdown prompt files and a `skills/` directory containing its agent skills. These directories are mandatory, not optional supporting assets.
 - Store prompts as `prompts/<prompt_name>.md` and each skill as `skills/<skill-name>/SKILL.md`. The skill filename is exactly `SKILL.md`, uppercase and singular, not `skills.md` or `skill.md`.
 - Add supporting tools or assets inside the agent or individual skill directory only when needed.
-- Existing agents under `src/agents/` are legacy locations for this workflow. Do not move or rename them unless explicitly requested.
+- This location applies to both prompt-based and hosted agents. Keep new agents beside the existing agents; do not move or rename unrelated agents unless explicitly requested.
+- Do not create `AGENT.md` or `AGENTS.md` files unless the user explicitly requests them, even when generic Foundry scaffolding guidance calls for them. Keep coding-agent instructions in the existing `.github` customizations.
 
 Required layout:
 
 ```text
-agents/
-	<agent_name>_agent/
-		create_<agent_name>_agent.py
-		prompts/
-			instructions.md
-		skills/
-			<skill-name>/
-				SKILL.md
+src/
+	agents/
+		<agent_name>_agent/
+			create_<agent_name>_agent.py
+			prompts/
+				instructions.md
+			skills/
+				<skill-name>/
+					SKILL.md
 ```
 
 ## Prompt and Skill Files
