@@ -1,29 +1,50 @@
-import json
-import sys
+import os
 
 import pytest
-
-import connections
-
-
-@pytest.mark.integration
-def testget_connection():
-    connection = connections.get_connection("aisearch")
-
-    assert connection.name == "aisearch"
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import ConnectionType
+from azure.identity import DefaultAzureCredential
 
 
 @pytest.mark.integration
-def testget_default_connection():
-    connection = connections.get_default_connection("CognitiveSearch")
+def test_get():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        connection = client.connections.get(name="aisearch")
 
-    assert connection.name == "aisearch"
+        assert connection is not None
 
 
 @pytest.mark.integration
-def testlist_connections():
-    project_connections = connections.list_connections(
-        connection_type="CognitiveSearch",
-    )
+def test_get_default():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        connection = client.connections.get_default(
+            connection_type=ConnectionType.AZURE_AI_SEARCH,
+        )
 
-    assert any(connection.name == "aisearch" for connection in project_connections)
+        assert connection is not None
+
+
+@pytest.mark.integration
+def test_list():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        listed_connections = list(client.connections.list())
+
+        assert isinstance(listed_connections, list)

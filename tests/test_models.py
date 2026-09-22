@@ -1,171 +1,232 @@
-import inspect
-import logging
+import os
+import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from uuid import uuid4
 
-from azure.ai.projects.operations import BetaModelsOperations
+import pytest
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import (
+    ModelCredentialRequest,
+    ModelPendingUploadRequest,
+    ModelVersion,
+    PendingUploadType,
+    UpdateModelVersionRequest,
+)
+from azure.core.exceptions import ResourceNotFoundError
+from azure.identity import DefaultAzureCredential
 
-import models
+
+@pytest.mark.integration
+def test_create():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+        tempfile.TemporaryDirectory() as directory,
+    ):
+        model_name = f"pytest-model-{uuid4().hex[:8]}"
+        weights_file = Path(directory) / "weights.safetensors"
+        weights_file.write_bytes(b"pytest")
+
+        try:
+            created_model = client.beta.models.create(
+                name=model_name,
+                version="1",
+                source=str(weights_file),
+                description="Temporary model registered by pytest.",
+                wait_for_commit=False,
+            )
+
+            assert created_model is None
+        finally:
+            client.beta.models.delete(name=model_name, version="1")
 
 
-def test_model_wrapper_parameters_match_sdk():
-    pairs = (
-        (models.upload_weights, BetaModelsOperations.create),
-        (models.delete_weights, BetaModelsOperations.delete),
-        (models.get_model_credentials, BetaModelsOperations.get_credentials),
-        (models.update_weights, BetaModelsOperations.update),
-        (models.list_models, BetaModelsOperations.list),
-        (models.list_model_versions, BetaModelsOperations.list_versions),
-        (models.get_model_version, BetaModelsOperations.get),
-    )
-
-    for wrapper, sdk_method in pairs:
-        wrapper_parameters = tuple(inspect.signature(wrapper).parameters.values())
-        sdk_parameters = tuple(
-            parameter
-            for parameter in list(inspect.signature(sdk_method).parameters.values())[1:]
-            if parameter.kind is not inspect.Parameter.VAR_KEYWORD
+@pytest.mark.integration
+def test_delete():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        model_name = f"pytest-model-{uuid4().hex[:8]}"
+        client.beta.models.pending_upload(
+            name=model_name,
+            version="1",
+            pending_upload_request=ModelPendingUploadRequest(
+                pending_upload_type=PendingUploadType.TEMPORARY_BLOB_REFERENCE,
+            ),
         )
 
-        assert all(
-            parameter.kind is not inspect.Parameter.VAR_KEYWORD
-            for parameter in wrapper_parameters
+        deleted_model = client.beta.models.delete(name=model_name, version="1")
+
+        assert deleted_model is None
+
+
+@pytest.mark.integration
+def test_get():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.beta.models.get(
+                name=f"pytest-model-{uuid4().hex[:8]}",
+                version="1",
+            )
+
+
+@pytest.mark.integration
+def test_get_credentials():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        model_name = f"pytest-model-{uuid4().hex[:8]}"
+        pending_upload = client.beta.models.pending_upload(
+            name=model_name,
+            version="1",
+            pending_upload_request=ModelPendingUploadRequest(
+                pending_upload_type=PendingUploadType.TEMPORARY_BLOB_REFERENCE,
+            ),
         )
-        assert tuple(
-            (parameter.name, parameter.kind, parameter.default)
-            for parameter in wrapper_parameters
-        ) == tuple(
-            (parameter.name, parameter.kind, parameter.default)
-            for parameter in sdk_parameters
+
+        try:
+            model_credential = client.beta.models.get_credentials(
+                name=model_name,
+                version="1",
+                credential_request=ModelCredentialRequest(
+                    blob_uri=pending_upload.blob_reference.blob_uri,
+                ),
+            )
+
+            assert model_credential is not None
+        finally:
+            client.beta.models.delete(name=model_name, version="1")
+
+
+@pytest.mark.integration
+def test_list():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        listed_models = list(client.beta.models.list())
+
+        assert isinstance(listed_models, list)
+
+
+@pytest.mark.integration
+def test_list_versions():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        model_name = f"pytest-model-{uuid4().hex[:8]}"
+        client.beta.models.pending_upload(
+            name=model_name,
+            version="1",
+            pending_upload_request=ModelPendingUploadRequest(
+                pending_upload_type=PendingUploadType.TEMPORARY_BLOB_REFERENCE,
+            ),
         )
 
+        try:
+            model_versions = list(client.beta.models.list_versions(name=model_name))
 
-def test_model_wrappers_delegate_to_beta_models(monkeypatch, caplog):
-    endpoint = "https://example.services.ai.azure.com/api/projects/test"
-    monkeypatch.setenv("AZURE_AI_PROJECT_ENDPOINT", endpoint)
-    caplog.set_level(logging.INFO, logger=models.__name__)
+            assert isinstance(model_versions, list)
+        finally:
+            client.beta.models.delete(name=model_name, version="1")
 
-    credential_context = MagicMock()
-    credential = object()
-    credential_context.__enter__.return_value = credential
-    credential_factory = MagicMock(return_value=credential_context)
 
-    client = MagicMock()
-    client.__enter__.return_value = client
-    client_factory = MagicMock(return_value=client)
-    sdk_models = client.beta.models
+@pytest.mark.integration
+def test_pending_create_version():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        model_name = f"pytest-model-{uuid4().hex[:8]}"
+        pending_upload = client.beta.models.pending_upload(
+            name=model_name,
+            version="1",
+            pending_upload_request=ModelPendingUploadRequest(
+                pending_upload_type=PendingUploadType.TEMPORARY_BLOB_REFERENCE,
+            ),
+        )
 
-    monkeypatch.setattr(models, "DefaultAzureCredential", credential_factory)
-    monkeypatch.setattr(models, "AIProjectClient", client_factory)
+        try:
+            create_response = client.beta.models.pending_create_version(
+                name=model_name,
+                version="1",
+                model_version=ModelVersion(
+                    blob_uri=pending_upload.blob_reference.blob_uri,
+                    description="Temporary model registered by pytest.",
+                ),
+            )
 
-    created = object()
-    sdk_models.create.return_value = created
-    source = Path("weights")
-    assert models.upload_weights(
-        name="custom-model",
-        version="1",
-        source=source,
-        weight_type="LoRA",
-        base_model="base-model",
-        description="description",
-        tags={"stage": "test"},
-        azcopy_path="/usr/local/bin/azcopy",
-        wait_for_commit=False,
-        polling_timeout=10.0,
-        polling_interval=0.5,
-    ) is created
-    sdk_models.create.assert_called_once_with(
-        name="custom-model",
-        version="1",
-        source=source,
-        weight_type="LoRA",
-        base_model="base-model",
-        description="description",
-        tags={"stage": "test"},
-        azcopy_path="/usr/local/bin/azcopy",
-        wait_for_commit=False,
-        polling_timeout=10.0,
-        polling_interval=0.5,
-    )
+            assert create_response is not None
+        finally:
+            client.beta.models.delete(name=model_name, version="1")
 
-    models.delete_weights("custom-model", "1")
-    sdk_models.delete.assert_called_once_with(
-        name="custom-model",
-        version="1",
-    )
 
-    credentials = object()
-    sdk_models.get_credentials.return_value = credentials
-    credential_request = {"kind": "SAS"}
-    assert models.get_model_credentials(
-        "custom-model",
-        "1",
-        credential_request,
-    ) is credentials
-    sdk_models.get_credentials.assert_called_once_with(
-        name="custom-model",
-        version="1",
-        credential_request=credential_request,
-    )
+@pytest.mark.integration
+def test_pending_upload():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        model_name = f"pytest-model-{uuid4().hex[:8]}"
 
-    updated = object()
-    sdk_models.update.return_value = updated
-    model_version_update = {"description": "updated"}
-    assert models.update_weights(
-        "custom-model",
-        "1",
-        model_version_update,
-    ) is updated
-    sdk_models.update.assert_called_once_with(
-        name="custom-model",
-        version="1",
-        model_version_update=model_version_update,
-    )
+        try:
+            pending_upload = client.beta.models.pending_upload(
+                name=model_name,
+                version="1",
+                pending_upload_request=ModelPendingUploadRequest(
+                    pending_upload_type=PendingUploadType.TEMPORARY_BLOB_REFERENCE,
+                ),
+            )
 
-    latest = [object(), object()]
-    sdk_models.list.return_value = iter(latest)
-    assert models.list_models() == latest
-    sdk_models.list.assert_called_once_with()
+            assert pending_upload is not None
+        finally:
+            client.beta.models.delete(name=model_name, version="1")
 
-    versions = [object()]
-    sdk_models.list_versions.return_value = iter(versions)
-    assert models.list_model_versions("custom-model") == versions
-    sdk_models.list_versions.assert_called_once_with(name="custom-model")
 
-    retrieved = object()
-    sdk_models.get.return_value = retrieved
-    assert models.get_model_version("custom-model", "1") is retrieved
-    sdk_models.get.assert_called_once_with(
-        name="custom-model",
-        version="1",
-    )
-
-    assert credential_factory.call_count == 7
-    assert client_factory.call_args_list == [
-        call(endpoint=endpoint, credential=credential)
-    ] * 7
-
-    messages = [record.getMessage() for record in caplog.records]
-    expected_prefixes = (
-        "Uploading model weights name=custom-model version=1 source=weights",
-        "Uploaded model weights name=custom-model version=1 committed=True duration_ms=",
-        "Deleting model weights name=custom-model version=1",
-        "Deleted model weights name=custom-model version=1 duration_ms=",
-        "Getting model credentials name=custom-model version=1",
-        "Retrieved model credentials name=custom-model version=1 duration_ms=",
-        "Updating model weights name=custom-model version=1",
-        "Updated model weights name=custom-model version=1 duration_ms=",
-        "Listing models",
-        "Listed models count=2 duration_ms=",
-        "Listing model versions name=custom-model",
-        "Listed model versions name=custom-model count=1 duration_ms=",
-        "Getting model version name=custom-model version=1",
-        "Retrieved model version name=custom-model version=1 duration_ms=",
-    )
-
-    assert len(messages) == len(expected_prefixes)
-    assert all(
-        message.startswith(expected_prefix)
-        for message, expected_prefix in zip(messages, expected_prefixes)
-    )
-    assert all("SAS" not in message for message in messages)
+@pytest.mark.integration
+def test_update():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.beta.models.update(
+                name=f"pytest-model-{uuid4().hex[:8]}",
+                version="1",
+                model_version_update=UpdateModelVersionRequest(
+                    description="Temporary model updated by pytest.",
+                ),
+            )

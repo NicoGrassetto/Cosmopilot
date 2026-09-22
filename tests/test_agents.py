@@ -1,829 +1,732 @@
-import json
-from io import BytesIO
-import sys
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+import os
+import tempfile
+from pathlib import Path
+from uuid import uuid4
+from zipfile import ZipFile
 
 import pytest
-from azure.ai.projects import models
-
-from agents import agents
-
-
-class SerializableResult:
-    def __init__(self, **values):
-        self.values = values
-
-    def as_dict(self):
-        return self.values
-
-
-def mock_project_client(monkeypatch: pytest.MonkeyPatch):
-    credential = MagicMock()
-    credential.__enter__.return_value = credential
-
-    client = MagicMock()
-    client.__enter__.return_value = client
-
-    client_factory = MagicMock(return_value=client)
-    monkeypatch.setattr(agents, "DefaultAzureCredential", MagicMock(return_value=credential))
-    monkeypatch.setattr(agents, "AIProjectClient", client_factory)
-    monkeypatch.setenv("AZURE_AI_PROJECT_ENDPOINT", "https://example.test/project")
-    return client
+from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import (
+    AgentEndpointConfig,
+    AgentOptimizationDatasetItem,
+    AgentOptimizationEvaluatorRef,
+    AgentOptimizationInlineDatasetInput,
+    AgentOptimizationJob,
+    AgentOptimizationJobInputs,
+    CodeConfiguration,
+    CodeDependencyResolution,
+    FixedRatioVersionSelectionRule,
+    GenerateVoiceAgentRequest,
+    HostedAgentDefinition,
+    Microsoft365PublishScope,
+    OptimizedAgentIdentifier,
+    PromptAgentDefinition,
+    ProtocolVersionRecord,
+    VersionRefIndicator,
+    VersionSelector,
+)
+from azure.core.exceptions import ResourceNotFoundError
+from azure.identity import DefaultAzureCredential
 
 
-def run_cli(monkeypatch, capsys, *arguments):
-    monkeypatch.setattr(sys, "argv", ["agents", *arguments])
-    agents.main()
-    return json.loads(capsys.readouterr().out)
+@pytest.mark.integration
+def test_begin_create_optimization_job():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.beta.agents.begin_create_optimization_job(
+                job=AgentOptimizationJob(
+                    inputs=AgentOptimizationJobInputs(
+                        agent=OptimizedAgentIdentifier(
+                            agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                        ),
+                        train_dataset=AgentOptimizationInlineDatasetInput(
+                            dataset_items=[
+                                AgentOptimizationDatasetItem(
+                                    query="What is the weather in Paris?",
+                                    ground_truth="It is sunny in Paris.",
+                                )
+                            ],
+                        ),
+                        evaluators=[AgentOptimizationEvaluatorRef(name="relevance")],
+                    ),
+                ),
+            )
 
 
-def test_agent_version_wrappers(monkeypatch):
-    client = mock_project_client(monkeypatch)
-    definition = models.AgentDefinition({"kind": "prompt", "model": "test-model"})
-    blueprint_reference = models.AgentBlueprintReference({"id": "blueprint-1"})
-    created_version = SimpleNamespace(name="test-agent", version="1")
-    client.agents.create_version.return_value = created_version
-
-    assert agents.create_agent_version(
-        "test-agent",
-        definition=definition,
-        metadata={"owner": "test"},
-        description="Test agent",
-        blueprint_reference=blueprint_reference,
-        draft=True,
-    ) is created_version
-    client.agents.create_version.assert_called_once_with(
-        agent_name="test-agent",
-        definition=definition,
-        content_type="application/json",
-        metadata={"owner": "test"},
-        description="Test agent",
-        blueprint_reference=blueprint_reference,
-        draft=True,
-    )
-
-    manifest_version = SimpleNamespace(name="test-agent", version="2")
-    client.agents.create_version_from_manifest.return_value = manifest_version
-    assert agents.create_version_from_manifest(
-        "test-agent",
-        manifest_id="manifest-1",
-        parameter_values={"model": "test-model"},
-        metadata={"owner": "test"},
-        description="Manifest version",
-    ) is manifest_version
-    client.agents.create_version_from_manifest.assert_called_once_with(
-        agent_name="test-agent",
-        manifest_id="manifest-1",
-        parameter_values={"model": "test-model"},
-        content_type="application/json",
-        metadata={"owner": "test"},
-        description="Manifest version",
-    )
-
-    hosted_definition = models.HostedAgentDefinition(
-        {"cpu": "0.5", "memory": "1Gi"}
-    )
-    code = BytesIO(b"code")
-    code_version = SimpleNamespace(name="hosted-agent", version="1")
-    client.agents.create_version_from_code.return_value = code_version
-    assert agents.create_version_from_code(
-        "hosted-agent",
-        definition=hosted_definition,
-        code=code,
-        code_zip_sha256="abc123",
-        description="Hosted version",
-        metadata={"owner": "test"},
-    ) is code_version
-    client.agents.create_version_from_code.assert_called_once_with(
-        agent_name="hosted-agent",
-        definition=hosted_definition,
-        code=code,
-        code_zip_sha256="abc123",
-        description="Hosted version",
-        metadata={"owner": "test"},
-    )
-
-    client.agents.download_code.return_value = iter((b"zip-", b"content"))
-    assert b"".join(
-        agents.download_code("hosted-agent", agent_version="1")
-    ) == b"zip-content"
-    client.agents.download_code.assert_called_once_with(
-        agent_name="hosted-agent",
-        agent_version="1",
-    )
+@pytest.mark.integration
+def test_cancel_optimization_job():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.beta.agents.cancel_optimization_job(
+                job_id=f"pytest-job-{uuid4().hex[:8]}",
+            )
 
 
-def test_session_wrappers(monkeypatch):
-    client = mock_project_client(monkeypatch)
-    version_indicator = models.VersionIndicator({"agent_version": "1"})
-    created_session = SimpleNamespace(
-        agent_session_id="session-1",
-        status="running",
-    )
-    client.agents.create_session.return_value = created_session
+@pytest.mark.integration
+def test_create_from_prompt():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
 
-    assert agents.create_session(
-        "hosted-agent",
-        version_indicator=version_indicator,
-        agent_session_id="session-1",
-    ) is created_session
-    client.agents.create_session.assert_called_once_with(
-        agent_name="hosted-agent",
-        version_indicator=version_indicator,
-        content_type="application/json",
-        agent_session_id="session-1",
-    )
+        try:
+            created_agent = client.beta.agents.create_from_prompt(
+                body=GenerateVoiceAgentRequest(
+                    name=agent_name,
+                    goal="Tell the caller the weather and hang up.",
+                    description="Temporary agent created by pytest.",
+                    draft=True,
+                ),
+            )
 
-    retrieved_session = SimpleNamespace(
-        agent_session_id="session-1",
-        status="running",
-    )
-    client.agents.get_session.return_value = retrieved_session
-    assert agents.get_session("hosted-agent", "session-1") is retrieved_session
-    client.agents.get_session.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-    )
+            assert created_agent is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
 
-    listed_sessions = [retrieved_session]
-    client.agents.list_sessions.return_value = listed_sessions
-    assert agents.list_sessions(
-        "hosted-agent",
-        limit=10,
-        order="desc",
-        before="session-2",
-    ) == listed_sessions
-    client.agents.list_sessions.assert_called_once_with(
-        agent_name="hosted-agent",
-        limit=10,
-        order="desc",
-        before="session-2",
-    )
 
-    assert agents.stop_session("hosted-agent", "session-1") is None
-    client.agents.stop_session.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-    )
+@pytest.mark.integration
+def test_create_session():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.create_session(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                version_indicator=VersionRefIndicator(agent_version="1"),
+            )
 
-    assert agents.delete_session("hosted-agent", "session-1") is None
-    client.agents.delete_session.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-    )
 
-    client.agents.get_session_log_stream.return_value = iter((b"event: ", b"log"))
-    assert b"".join(
-        agents.get_session_log_stream(
-            "hosted-agent",
-            "1",
-            "session-1",
+@pytest.mark.integration
+def test_create_version():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+
+        try:
+            created_agent_version = client.agents.create_version(
+                agent_name=agent_name,
+                definition=PromptAgentDefinition(
+                    model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                    instructions="Answer the question and stop.",
+                ),
+                description="Temporary agent created by pytest.",
+            )
+
+            assert created_agent_version is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_create_version_from_code():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+        tempfile.TemporaryDirectory() as directory,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        entry_point_file = Path(directory) / "main.py"
+        entry_point_file.write_text("print('pytest')\n")
+        code_archive = Path(directory) / "code.zip"
+        with ZipFile(code_archive, "w") as archive:
+            archive.write(entry_point_file, "main.py")
+
+        try:
+            with code_archive.open("rb") as code:
+                created_agent_version = client.agents.create_version_from_code(
+                    agent_name=agent_name,
+                    definition=HostedAgentDefinition(
+                        cpu="0.5",
+                        memory="1Gi",
+                        code_configuration=CodeConfiguration(
+                            runtime="python_3_14",
+                            entry_point=["python", "main.py"],
+                            dependency_resolution=CodeDependencyResolution.REMOTE_BUILD,
+                        ),
+                        protocol_versions=[
+                            ProtocolVersionRecord(protocol="responses", version="2.0.0")
+                        ],
+                    ),
+                    code=code,
+                    description="Temporary agent created by pytest.",
+                )
+
+            assert created_agent_version is not None
+        finally:
+            client.agents.delete(agent_name=agent_name, force=True)
+
+
+@pytest.mark.integration
+def test_create_version_from_manifest():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.create_version_from_manifest(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                manifest_id=f"pytest-manifest-{uuid4().hex[:8]}",
+                parameter_values={},
+            )
+
+
+@pytest.mark.integration
+def test_delete():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
         )
-    ) == b"event: log"
-    client.agents.get_session_log_stream.assert_called_once_with(
-        agent_name="hosted-agent",
-        agent_version="1",
-        session_id="session-1",
-    )
+
+        deleted_agent = client.agents.delete(agent_name=agent_name)
+
+        assert deleted_agent is not None
 
 
-def test_session_file_wrappers(monkeypatch):
-    client = mock_project_client(monkeypatch)
-    listed_entries = [SimpleNamespace(name="input.txt")]
-    client.agents.list_session_files.return_value = listed_entries
+@pytest.mark.integration
+def test_delete_optimization_job():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.beta.agents.delete_optimization_job(
+                job_id=f"pytest-job-{uuid4().hex[:8]}",
+            )
 
-    assert agents.list_session_files(
-        "hosted-agent",
-        "session-1",
-        path="/data",
-        limit=10,
-        order="asc",
-        before="entry-2",
-    ) == listed_entries
-    client.agents.list_session_files.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        path="/data",
-        limit=10,
-        order="asc",
-        before="entry-2",
-    )
 
-    upload_result = SimpleNamespace(path="/data/input.txt")
-    client.agents.upload_session_file.return_value = upload_result
-    assert agents.upload_session_file(
-        "hosted-agent",
-        "session-1",
-        b"input",
-        path="/data/input.txt",
-    ) is upload_result
-    client.agents.upload_session_file.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        content=b"input",
-        path="/data/input.txt",
-    )
+@pytest.mark.integration
+def test_delete_session():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.delete_session(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                session_id=f"pytest-session-{uuid4().hex[:8]}",
+            )
 
-    client.agents.download_session_file.return_value = iter((b"out", b"put"))
-    assert b"".join(
-        agents.download_session_file(
-            "hosted-agent",
-            "session-1",
-            path="/data/output.txt",
+
+@pytest.mark.integration
+def test_delete_session_file():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.delete_session_file(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                session_id=f"pytest-session-{uuid4().hex[:8]}",
+                path="pytest.txt",
+            )
+
+
+@pytest.mark.integration
+def test_delete_version():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
         )
-    ) == b"output"
-    client.agents.download_session_file.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        path="/data/output.txt",
-    )
-
-    assert agents.delete_session_file(
-        "hosted-agent",
-        "session-1",
-        path="/data",
-        recursive=True,
-    ) is None
-    client.agents.delete_session_file.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        path="/data",
-        recursive=True,
-    )
-
-
-def test_agent_version_commands(monkeypatch, tmp_path, capsys):
-    definition_file = tmp_path / "definition.json"
-    definition_file.write_text(
-        '{"kind": "prompt", "model": "test-model"}',
-        encoding="utf-8",
-    )
-    metadata_file = tmp_path / "metadata.json"
-    metadata_file.write_text('{"owner": "test"}', encoding="utf-8")
-    blueprint_file = tmp_path / "blueprint.json"
-    blueprint_file.write_text('{"id": "blueprint-1"}', encoding="utf-8")
-
-    create_command = MagicMock(
-        return_value=SerializableResult(name="test-agent", version="1")
-    )
-    monkeypatch.setattr(agents, "create_agent_version", create_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "--allow-preview",
-        "create-agent-version",
-        "--agent-name",
-        "test-agent",
-        "--definition-file",
-        str(definition_file),
-        "--metadata-file",
-        str(metadata_file),
-        "--description",
-        "Test agent",
-        "--blueprint-reference-file",
-        str(blueprint_file),
-        "--draft",
-    )
-    create_arguments = create_command.call_args.kwargs
-    assert create_arguments["definition"].as_dict() == {
-        "kind": "prompt",
-        "model": "test-model",
-    }
-    assert create_arguments["metadata"] == {"owner": "test"}
-    assert create_arguments["blueprint_reference"].as_dict() == {
-        "id": "blueprint-1"
-    }
-    assert create_arguments["draft"] is True
-    assert create_arguments["allow_preview"] is True
-    assert output == {"name": "test-agent", "version": "1"}
-
-    parameter_values_file = tmp_path / "parameter-values.json"
-    parameter_values_file.write_text(
-        '{"model": "test-model"}',
-        encoding="utf-8",
-    )
-    manifest_command = MagicMock(
-        return_value=SerializableResult(name="test-agent", version="2")
-    )
-    monkeypatch.setattr(agents, "create_version_from_manifest", manifest_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "create-version-from-manifest",
-        "--agent-name",
-        "test-agent",
-        "--manifest-id",
-        "manifest-1",
-        "--parameter-values-file",
-        str(parameter_values_file),
-        "--metadata-file",
-        str(metadata_file),
-        "--description",
-        "Manifest version",
-    )
-    manifest_command.assert_called_once_with(
-        agent_name="test-agent",
-        manifest_id="manifest-1",
-        parameter_values={"model": "test-model"},
-        metadata={"owner": "test"},
-        description="Manifest version",
-        allow_preview=False,
-    )
-    assert output == {"name": "test-agent", "version": "2"}
-
-    hosted_definition_file = tmp_path / "hosted-definition.json"
-    hosted_definition_file.write_text(
-        '{"cpu": "0.5", "memory": "1Gi"}',
-        encoding="utf-8",
-    )
-    code_file = tmp_path / "hosted-agent.zip"
-    code_file.write_bytes(b"code")
-    code_command = MagicMock(
-        return_value=SerializableResult(name="hosted-agent", version="1")
-    )
-    monkeypatch.setattr(agents, "create_version_from_code", code_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "create-version-from-code",
-        "--agent-name",
-        "hosted-agent",
-        "--definition-file",
-        str(hosted_definition_file),
-        "--code-file",
-        str(code_file),
-        "--code-zip-sha256",
-        "abc123",
-        "--metadata-file",
-        str(metadata_file),
-        "--description",
-        "Hosted version",
-    )
-    code_arguments = code_command.call_args.kwargs
-    assert code_arguments["definition"].as_dict() == {
-        "cpu": "0.5",
-        "memory": "1Gi",
-        "kind": "hosted",
-    }
-    assert code_arguments["code"].name == str(code_file)
-    assert code_arguments["code"].closed
-    assert code_arguments["code_zip_sha256"] == "abc123"
-    assert code_arguments["metadata"] == {"owner": "test"}
-    assert output == {"name": "hosted-agent", "version": "1"}
-
-    downloaded_code = tmp_path / "downloaded-agent.zip"
-    download_command = MagicMock(return_value=iter((b"zip-", b"content")))
-    monkeypatch.setattr(agents, "download_code", download_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "download-code",
-        "--agent-name",
-        "hosted-agent",
-        "--agent-version",
-        "1",
-        "--output",
-        str(downloaded_code),
-    )
-    download_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        agent_version="1",
-        allow_preview=False,
-    )
-    assert downloaded_code.read_bytes() == b"zip-content"
-    assert output["bytes"] == len(b"zip-content")
-
-
-def test_session_commands(monkeypatch, tmp_path, capsys):
-    version_indicator_file = tmp_path / "version-indicator.json"
-    version_indicator_file.write_text(
-        '{"agent_version": "1"}',
-        encoding="utf-8",
-    )
-    create_command = MagicMock(
-        return_value=SerializableResult(
-            agent_session_id="session-1",
-            status="running",
+        second_agent_version = client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question briefly and stop.",
+            ),
         )
-    )
-    monkeypatch.setattr(agents, "create_session", create_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "create-session",
-        "--agent-name",
-        "hosted-agent",
-        "--version-indicator-file",
-        str(version_indicator_file),
-        "--session-id",
-        "session-1",
-    )
-    create_arguments = create_command.call_args.kwargs
-    assert create_arguments["version_indicator"].as_dict() == {
-        "agent_version": "1"
-    }
-    assert create_arguments["agent_session_id"] == "session-1"
-    assert output["agent_session_id"] == "session-1"
 
-    get_command = MagicMock(
-        return_value=SerializableResult(
-            agent_session_id="session-1",
-            status="running",
+        try:
+            deleted_agent_version = client.agents.delete_version(
+                agent_name=agent_name,
+                agent_version=second_agent_version.version,
+            )
+
+            assert deleted_agent_version is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_disable():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
         )
-    )
-    monkeypatch.setattr(agents, "get_session", get_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "get-session",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-    )
-    get_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        allow_preview=False,
-    )
-    assert output["status"] == "running"
 
-    list_command = MagicMock(
-        return_value=[SerializableResult(agent_session_id="session-1")]
-    )
-    monkeypatch.setattr(agents, "list_sessions", list_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "list-sessions",
-        "--agent-name",
-        "hosted-agent",
-        "--limit",
-        "10",
-        "--order",
-        "desc",
-        "--before",
-        "session-2",
-    )
-    list_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        limit=10,
-        order="desc",
-        before="session-2",
-        allow_preview=False,
-    )
-    assert output == [{"agent_session_id": "session-1"}]
+        try:
+            disabled_agent = client.agents.disable(agent_name=agent_name)
 
-    stop_command = MagicMock(return_value=None)
-    monkeypatch.setattr(agents, "stop_session", stop_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "stop-session",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-    )
-    stop_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        allow_preview=False,
-    )
-    assert output == {"session_id": "session-1", "stopped": True}
-
-    delete_command = MagicMock(return_value=None)
-    monkeypatch.setattr(agents, "delete_session", delete_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "delete-session",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-    )
-    delete_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        allow_preview=False,
-    )
-    assert output == {"session_id": "session-1", "deleted": True}
-
-    log_file = tmp_path / "session.log"
-    log_command = MagicMock(return_value=iter((b"event: ", b"log")))
-    monkeypatch.setattr(agents, "get_session_log_stream", log_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "get-session-log-stream",
-        "--agent-name",
-        "hosted-agent",
-        "--agent-version",
-        "1",
-        "--session-id",
-        "session-1",
-        "--output",
-        str(log_file),
-    )
-    log_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        agent_version="1",
-        session_id="session-1",
-        allow_preview=False,
-    )
-    assert log_file.read_bytes() == b"event: log"
-    assert output["bytes"] == len(b"event: log")
+            assert disabled_agent is None
+        finally:
+            client.agents.delete(agent_name=agent_name)
 
 
-def test_session_file_commands(monkeypatch, tmp_path, capsys):
-    list_command = MagicMock(
-        return_value=[SerializableResult(name="input.txt")]
-    )
-    monkeypatch.setattr(agents, "list_session_files", list_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "list-session-files",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-        "--path",
-        "/data",
-        "--limit",
-        "10",
-        "--order",
-        "asc",
-        "--before",
-        "entry-2",
-    )
-    list_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        path="/data",
-        limit=10,
-        order="asc",
-        before="entry-2",
-        allow_preview=False,
-    )
-    assert output == [{"name": "input.txt"}]
-
-    source = tmp_path / "input.txt"
-    source.write_bytes(b"input")
-    upload_command = MagicMock(
-        return_value=SerializableResult(path="/data/input.txt")
-    )
-    monkeypatch.setattr(agents, "upload_session_file", upload_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "upload-session-file",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-        "--source",
-        str(source),
-        "--path",
-        "/data/input.txt",
-    )
-    upload_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        content=b"input",
-        path="/data/input.txt",
-        allow_preview=False,
-    )
-    assert output == {"path": "/data/input.txt"}
-
-    destination = tmp_path / "output.txt"
-    download_command = MagicMock(return_value=iter((b"out", b"put")))
-    monkeypatch.setattr(agents, "download_session_file", download_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "download-session-file",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-        "--path",
-        "/data/output.txt",
-        "--output",
-        str(destination),
-    )
-    download_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        path="/data/output.txt",
-        allow_preview=False,
-    )
-    assert destination.read_bytes() == b"output"
-    assert output["bytes"] == len(b"output")
-
-    delete_command = MagicMock(return_value=None)
-    monkeypatch.setattr(agents, "delete_session_file", delete_command)
-    output = run_cli(
-        monkeypatch,
-        capsys,
-        "delete-session-file",
-        "--agent-name",
-        "hosted-agent",
-        "--session-id",
-        "session-1",
-        "--path",
-        "/data",
-        "--recursive",
-    )
-    delete_command.assert_called_once_with(
-        agent_name="hosted-agent",
-        session_id="session-1",
-        path="/data",
-        recursive=True,
-        allow_preview=False,
-    )
-    assert output == {
-        "session_id": "session-1",
-        "path": "/data",
-        "deleted": True,
-    }
+@pytest.mark.integration
+def test_download_code():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            b"".join(
+                client.agents.download_code(
+                    agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                )
+            )
 
 
-def test_optimization_job_wrappers(monkeypatch):
-    client = mock_project_client(monkeypatch)
-    job = models.OptimizationJob({"inputs": {}})
-
-    optimization_result = SimpleNamespace(best="candidate-1", candidates=[])
-    poller = MagicMock()
-    poller.result.return_value = optimization_result
-    client.beta.agents.begin_create_optimization_job.return_value = poller
-
-    created = agents.begin_create_optimization_job(
-        job,
-        operation_id="operation-1",
-        polling_interval=5,
-    )
-
-    assert created is optimization_result
-    client.beta.agents.begin_create_optimization_job.assert_called_once_with(
-        job=job,
-        operation_id="operation-1",
-        content_type="application/json",
-        polling_interval=5,
-    )
-    poller.result.assert_called_once_with()
-
-    retrieved_job = SimpleNamespace(id="job-1", status="in_progress")
-    client.beta.agents.get_optimization_job.return_value = retrieved_job
-    assert agents.get_optimization_job("job-1") is retrieved_job
-    client.beta.agents.get_optimization_job.assert_called_once_with(job_id="job-1")
-
-    listed_jobs = [SimpleNamespace(id="job-1", status="succeeded")]
-    client.beta.agents.list_optimization_jobs.return_value = listed_jobs
-    assert agents.list_optimization_jobs(
-        limit=10,
-        order="desc",
-        before="job-2",
-        status="succeeded",
-        agent_name="weather-agent",
-    ) == listed_jobs
-    client.beta.agents.list_optimization_jobs.assert_called_once_with(
-        limit=10,
-        order="desc",
-        before="job-2",
-        status="succeeded",
-        agent_name="weather-agent",
-    )
-
-    cancelled_job = SimpleNamespace(id="job-1", status="cancelled")
-    client.beta.agents.cancel_optimization_job.return_value = cancelled_job
-    assert agents.cancel_optimization_job("job-1") is cancelled_job
-    client.beta.agents.cancel_optimization_job.assert_called_once_with(job_id="job-1")
-
-    assert agents.delete_optimization_job("job-1") is None
-    client.beta.agents.delete_optimization_job.assert_called_once_with(job_id="job-1")
+@pytest.mark.integration
+def test_download_session_file():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            b"".join(
+                client.agents.download_session_file(
+                    agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                    session_id=f"pytest-session-{uuid4().hex[:8]}",
+                    path="pytest.txt",
+                )
+            )
 
 
-def test_begin_create_optimization_job_command(monkeypatch, tmp_path, capsys):
-    job_file = tmp_path / "optimization-job.json"
-    job_file.write_text('{"inputs": {}}', encoding="utf-8")
-    captured = {}
+@pytest.mark.integration
+def test_enable():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
+        client.agents.disable(agent_name=agent_name)
 
-    def begin_create(**kwargs):
-        captured.update(kwargs)
-        return SerializableResult(best="candidate-1")
+        try:
+            enabled_agent = client.agents.enable(agent_name=agent_name)
 
-    monkeypatch.setattr(agents, "begin_create_optimization_job", begin_create)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "agents",
-            "--allow-preview",
-            "begin-create-optimization-job",
-            "--job-file",
-            str(job_file),
-            "--operation-id",
-            "operation-1",
-            "--polling-interval",
-            "5",
-        ],
-    )
-
-    agents.main()
-
-    assert captured["job"].as_dict() == {"inputs": {}}
-    assert captured["operation_id"] == "operation-1"
-    assert captured["polling_interval"] == 5
-    assert captured["allow_preview"] is True
-    assert json.loads(capsys.readouterr().out) == {"best": "candidate-1"}
+            assert enabled_agent is None
+        finally:
+            client.agents.delete(agent_name=agent_name)
 
 
-def test_get_optimization_job_command(monkeypatch, capsys):
-    command = MagicMock(return_value=SerializableResult(id="job-1"))
-    monkeypatch.setattr(agents, "get_optimization_job", command)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["agents", "get-optimization-job", "--job-id", "job-1"],
-    )
+@pytest.mark.integration
+def test_get():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
 
-    agents.main()
+        try:
+            retrieved_agent = client.agents.get(agent_name=agent_name)
 
-    command.assert_called_once_with(job_id="job-1", allow_preview=False)
-    assert json.loads(capsys.readouterr().out) == {"id": "job-1"}
-
-
-def test_list_optimization_jobs_command(monkeypatch, capsys):
-    command = MagicMock(return_value=[SerializableResult(id="job-1")])
-    monkeypatch.setattr(agents, "list_optimization_jobs", command)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "agents",
-            "list-optimization-jobs",
-            "--limit",
-            "10",
-            "--order",
-            "desc",
-            "--before",
-            "job-2",
-            "--status",
-            "succeeded",
-            "--agent-name",
-            "weather-agent",
-        ],
-    )
-
-    agents.main()
-
-    command.assert_called_once_with(
-        limit=10,
-        order="desc",
-        before="job-2",
-        status="succeeded",
-        agent_name="weather-agent",
-        allow_preview=False,
-    )
-    assert json.loads(capsys.readouterr().out) == [{"id": "job-1"}]
+            assert retrieved_agent is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
 
 
-def test_cancel_optimization_job_command(monkeypatch, capsys):
-    command = MagicMock(
-        return_value=SerializableResult(id="job-1", status="cancelled")
-    )
-    monkeypatch.setattr(agents, "cancel_optimization_job", command)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["agents", "cancel-optimization-job", "--job-id", "job-1"],
-    )
-
-    agents.main()
-
-    command.assert_called_once_with(job_id="job-1", allow_preview=False)
-    assert json.loads(capsys.readouterr().out) == {
-        "id": "job-1",
-        "status": "cancelled",
-    }
+@pytest.mark.integration
+def test_get_microsoft365_package():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            b"".join(
+                client.agents.get_microsoft365_package(
+                    agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                    publish_scope=Microsoft365PublishScope.PERSONAL,
+                )
+            )
 
 
-def test_delete_optimization_job_command(monkeypatch, capsys):
-    command = MagicMock(return_value=None)
-    monkeypatch.setattr(agents, "delete_optimization_job", command)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        ["agents", "delete-optimization-job", "--job-id", "job-1"],
-    )
+@pytest.mark.integration
+def test_get_microsoft365_publish_defaults():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
 
-    agents.main()
+        try:
+            publish_defaults = client.agents.get_microsoft365_publish_defaults(
+                agent_name=agent_name,
+            )
 
-    command.assert_called_once_with(job_id="job-1", allow_preview=False)
-    assert json.loads(capsys.readouterr().out) == {
-        "job_id": "job-1",
-        "deleted": True,
-    }
+            assert publish_defaults is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_get_optimization_job():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.beta.agents.get_optimization_job(
+                job_id=f"pytest-job-{uuid4().hex[:8]}",
+            )
+
+
+@pytest.mark.integration
+def test_get_session():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.get_session(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                session_id=f"pytest-session-{uuid4().hex[:8]}",
+            )
+
+
+@pytest.mark.integration
+def test_get_session_log_stream():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.get_session_log_stream(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                agent_version="1",
+                session_id=f"pytest-session-{uuid4().hex[:8]}",
+            )
+
+
+@pytest.mark.integration
+def test_get_version():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
+
+        try:
+            retrieved_agent_version = client.agents.get_version(
+                agent_name=agent_name,
+                agent_version="1",
+            )
+
+            assert retrieved_agent_version is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_list():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        listed_agents = list(client.agents.list())
+
+        assert isinstance(listed_agents, list)
+
+
+@pytest.mark.integration
+def test_list_optimization_jobs():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        listed_optimization_jobs = list(client.beta.agents.list_optimization_jobs())
+
+        assert isinstance(listed_optimization_jobs, list)
+
+
+@pytest.mark.integration
+def test_list_session_files():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            list(
+                client.agents.list_session_files(
+                    agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                    session_id=f"pytest-session-{uuid4().hex[:8]}",
+                )
+            )
+
+
+@pytest.mark.integration
+def test_list_sessions():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
+
+        try:
+            listed_sessions = list(client.agents.list_sessions(agent_name=agent_name))
+
+            assert isinstance(listed_sessions, list)
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_list_versions():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
+
+        try:
+            agent_versions = list(client.agents.list_versions(agent_name=agent_name))
+
+            assert isinstance(agent_versions, list)
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_publish_to_microsoft365():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.publish_to_microsoft365(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                publish_scope=Microsoft365PublishScope.PERSONAL,
+            )
+
+
+@pytest.mark.integration
+def test_stop_session():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.stop_session(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                session_id=f"pytest-session-{uuid4().hex[:8]}",
+            )
+
+
+@pytest.mark.integration
+def test_update_details():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        agent_name = f"pytest-agent-{uuid4().hex[:8]}"
+        client.agents.create_version(
+            agent_name=agent_name,
+            definition=PromptAgentDefinition(
+                model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                instructions="Answer the question and stop.",
+            ),
+        )
+
+        try:
+            updated_agent = client.agents.update_details(
+                agent_name=agent_name,
+                agent_endpoint=AgentEndpointConfig(
+                    version_selector=VersionSelector(
+                        version_selection_rules=[
+                            FixedRatioVersionSelectionRule(
+                                agent_version="1",
+                                traffic_percentage=100,
+                            )
+                        ],
+                    ),
+                ),
+            )
+
+            assert updated_agent is not None
+        finally:
+            client.agents.delete(agent_name=agent_name)
+
+
+@pytest.mark.integration
+def test_upload_session_file():
+    with (
+        DefaultAzureCredential() as credential,
+        AIProjectClient(
+            endpoint=os.environ["AZURE_AI_PROJECT_ENDPOINT"],
+            credential=credential,
+        ) as client,
+    ):
+        with pytest.raises(ResourceNotFoundError):
+            client.agents.upload_session_file(
+                agent_name=f"pytest-agent-{uuid4().hex[:8]}",
+                session_id=f"pytest-session-{uuid4().hex[:8]}",
+                content=b"pytest",
+                path="pytest.txt",
+            )
