@@ -6,6 +6,10 @@ import os
 import sys
 from pathlib import Path
 
+from azure.ai.projects.models import MemorySearchPreviewTool
+
+from memory_storage import ensure_agent_memory_store
+
 # AGENT_DIR = Path(__file__).resolve().parent
 # SRC_DIR = AGENT_DIR.parents[1]
 # sys.path.insert(0, str(SRC_DIR))
@@ -190,7 +194,17 @@ def main() -> None:
             toolbox_endpoint,
         )
 
+    # ------- Memory store--------
+    memory_store = ensure_agent_memory_store(AGENT_NAME)
+    memory_tool = MemorySearchPreviewTool(
+        memory_store_name=memory_store.name,
+        scope="{{$userId}}",
+        update_delay=300,
+    )
+    # --------
+
     tools: list[Tool] = [
+        memory_tool,
         FunctionTool(
             name="get_resilience_priorities",
             description=(

@@ -11,4 +11,10 @@ definition:
     Use web search when current information is needed.
   tools:
     - type: web_search
+    # ------- Memory store--------
+    - type: memory_search_preview
+      memory_store_name: ping-pong-agent-memory
+      scope: "{{$userId}}"
+      update_delay: 300
+    # --------
   tool_choice: auto

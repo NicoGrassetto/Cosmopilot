@@ -22,6 +22,7 @@ from azure.ai.projects.models import (
     MemoryStoreUpdateCompletedResult,
     PageOrder,
 )
+from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.identity import DefaultAzureCredential
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,33 @@ def get_memory_store(name: str) -> MemoryStoreDetails:
         ) as client,
     ):
         return client.beta.memory_stores.get(name=name)
+
+
+# ------- Memory store--------
+def ensure_agent_memory_store(agent_name: str) -> MemoryStoreDetails:
+    """Reuse an agent's persistent store across agent versions."""
+    name = f"{agent_name}-memory"
+    try:
+        store = get_memory_store(name)
+    except ResourceNotFoundError:
+        logger.info("Creating memory store name=%s agent=%s", name, agent_name)
+        try:
+            return create_memory_store(
+                name=name,
+                definition=MemoryStoreDefaultDefinition(
+                    chat_model=os.environ["AZURE_DEPLOYMENT_NAME"],
+                    embedding_model=os.environ["AZURE_OPENAI_EMBEDDING_DEPLOYMENT"],
+                ),
+                description=f"Persistent memories for {agent_name}.",
+                metadata={"usecase": agent_name},
+            )
+        except ResourceExistsError:
+            logger.info("Memory store created concurrently; reusing name=%s", name)
+            return get_memory_store(name)
+
+    logger.info("Reusing memory store name=%s agent=%s", name, agent_name)
+    return store
+# --------
 
 
 def list_memory_stores(
@@ -515,4 +543,3 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)-8s %(name)s | %(message)s",
     )
     main()
-

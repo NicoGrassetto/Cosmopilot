@@ -487,6 +487,7 @@ Keep approvals enabled for tools that read sensitive data or cause side effects.
 ```python
 from azure.ai.projects.models import MemorySearchPreviewTool
 
+# ------- Memory store--------
 memory_search_tool = MemorySearchPreviewTool(
     memory_store_name="<memory-store-name>",
     scope="{{$userId}}",
@@ -494,10 +495,22 @@ memory_search_tool = MemorySearchPreviewTool(
 )
 
 tools = [memory_search_tool]
+# --------
 ```
 
 Create the memory store first through `project.beta.memory_stores`. The scope
-isolates memories; `{{$userId}}` resolves to the signed-in user's object ID.
+isolates memories; `{{$userId}}` resolves to the authenticated API caller's
+object ID, which can be a shared service identity rather than an application's
+end user. Enable preview access with `allow_preview=True` when creating the
+prompt agent through `project.agents`.
+
+The repository's agent setup scripts use
+[`ensure_agent_memory_store`](../src/memory_storage.py) to create a dedicated
+`<agent-name>-memory` store only when it is missing, preserving memories across
+agent versions. The hosted LangChain agent uses `AzureAIMemoryRetrieverTool`
+inside its runtime instead; that tool retrieves memories but does not write
+them automatically. See [persistent agent memory](../README.md#persistent-agent-memory-preview)
+for configuration, scope isolation, and lifecycle details.
 
 ### Namespace (Responses SDK)
 

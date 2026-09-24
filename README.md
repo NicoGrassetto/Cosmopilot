@@ -144,8 +144,100 @@ source .venv/bin/activate
 
 Dependencies remain installed in `.venv`; reinstall them only when a requirements file changes.
 
+### Persistent agent memory (preview)
+
+Agent creation scripts now ensure a dedicated memory store exists before
+creating the agent version. The shared
+[`ensure_agent_memory_store`](src/memory_storage.py) helper reuses existing
+stores, including when setup runs concurrently. It never deletes or resets
+memories during agent creation.
+
+| Agent | Memory store |
+| --- | --- |
+| Weather | `weather-agent-memory` |
+| Trail guide | `trail-guide-agent-memory` |
+| EU resilience (current and legacy setup) | `eu-resilience-agent-memory` |
+| Ping-pong prompt agent | `ping-pong-agent-memory` |
+| Pong-ping hosted agent | `pong-ping-hosted-agent-memory` |
+
+Creating a new store requires `AZURE_AI_PROJECT_ENDPOINT`,
+`AZURE_DEPLOYMENT_NAME` (the memory extraction chat deployment), and
+`AZURE_OPENAI_EMBEDDING_DEPLOYMENT`. The infrastructure exports these values;
+the setup scripts do not load `.env` automatically. For example:
+
+```bash
+azd exec -- env PYTHONPATH=src .venv/bin/python src/agents/weather-agent/create_weather_agent.py
+```
+
+The prompt agents retain their existing tools and also attach
+`MemorySearchPreviewTool`, with preview access enabled and a 300-second
+inactivity delay for memory updates. Their `{{$userId}}` scope resolves to the
+authenticated API caller. When a backend uses a shared service identity, this
+does **not** isolate that backend's end users: a multi-user application must
+provide trusted per-user scoping and authorization.
+
+The hosted LangChain sample uses `AzureAIMemoryRetrieverTool` in its
+[runtime](src/agents/pong-ping-agent/main.py), rather than in the hosted
+deployment definition. It retrieves existing memories; unlike the prompt-agent
+tool, it does not automatically extract new memories. Populate its store with
+the `create-memory` or `begin-update-memories` commands in
+[`memory_storage.py`](src/memory_storage.py), using the same scope.
+
+Before creating the hosted agent, configure `AGENT_MEMORY_SCOPE` with an
+explicit, trusted user or tenant scope:
+
+```bash
+azd env set AGENT_MEMORY_SCOPE "<trusted-user-or-tenant-scope>"
+azd exec -- env PYTHONPATH=src .venv/bin/python src/agents/pong-ping-agent/create-pong-ping-agent.py
+```
+
+The hosted setup passes the store name and scope into the container and bundles
+the current runtime with the root pinned requirements automatically; a
+prebuilt ZIP is not needed. This demo uses one configured scope per hosted
+deployment, not automatic per-user routing. Do not share that scope across
+users whose memories must remain separate. For a local runtime, export
+`AGENT_MEMORY_STORE_NAME` and `AGENT_MEMORY_SCOPE` as shown in
+[`.env.example`](.env.example).
+
+Memory stores persist independently of agent versions. Deleting an agent does
+not replace explicit memory cleanup: use `delete-scope` for a user's scoped
+memories or `delete` for an entire store. Memory setup remains in the agent
+creation scripts, not the infrastructure-only `azd postprovision` hook.
+
 ---
 
+
+## Foundry API Notebooks
+
+These standalone notebooks walk through every public method in their selected
+preview modules from [azure-ai-projects 2.7.0](docs/azure-ai-projects.md):
+
+| Notebook | Module | Public methods |
+| --- | --- | --- |
+| [Red Teaming](notebooks/red-teaming.ipynb) | `client.beta.red_teams` | 3 |
+| [Routines](notebooks/routines.ipynb) | `client.beta.routines` | 8 |
+| [Schedules](notebooks/schedules.ipynb) | `client.beta.schedules` | 6 |
+| [Skills](notebooks/skills.ipynb) | `client.beta.skills` | 11 |
+| [Voice Agents](notebooks/voice-agents.ipynb) | `client.beta.voice_agents.*` | 29, plus 16 returned realtime-object methods |
+| [Memory Stores](notebooks/memory-stores.ipynb) | `client.beta.memory_stores` | 13 |
+
+**Run All is offline by default.** Each notebook defines its walkthrough using
+only the Python standard library until `RUN_LIVE_DEMO` is explicitly enabled.
+Live runs require an existing kernel with `azure-ai-projects==2.7.0`,
+`openai>=3.0.0`, and the notebook-specific dependencies and Azure configuration.
+Voice realtime additionally requires the SDK's optional `voice` dependencies.
+The [root dependency manifest](requirements.txt) records the repository's current
+pins, but editing it alone does not update the selected kernel. Each notebook
+checks its SDK version before live calls. No notebook installs packages, creates
+an environment, or automatically loads `.env`.
+
+Read each notebook's prerequisites and cost/consent notes before opting in.
+Live examples can create billable resources, invoke models, and, with separate
+Voice Agent consent, place real phone calls. Cleanup targets only resources
+owned by that demo. Red-team runs are an exception: their SDK module has no
+cancel/delete methods, so submitted run records persist.
+
+---
 
 ## License
 
