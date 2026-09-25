@@ -21,7 +21,7 @@
 </p>
 
 Cosmopilot is a demo showcasing Microsoft Foundry as your AI platform choice. This repo aims at covering every feature Microsoft Foundry offers (GA and Preview) in a somewhat standardised repo structure drawn from what I've observed at my customers and through the Microsoft documentation and OS IP. This does not reflect in any shape of form what YOU should be doing but merely shows you how Microsoft and other folks organise these things.
-
+Prev named Cosmospilot
 > [!WARNING]
 > This project is simply a demo of Microsoft Foundry capabilities and is intended solely for exploration and validation purposes. 
 
